@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../squirrel-pi"
+		},
+		{
+			"path": "../avatar_1"
+		}
+	],
+	"settings": {}
+}

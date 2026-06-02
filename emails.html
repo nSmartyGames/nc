@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email Scanner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#ddd;font-family:system-ui,-apple-system,sans-serif;padding:14px;font-size:14px}
+.nav-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.nav-title{font-size:16px;font-weight:700;color:#d4a017;margin-right:auto}
+.btn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn:hover{border-color:#d4a017;background:#333}
+.btn.on{background:#3a2e00;border-color:#d4a017}
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{background:#222;color:#888;border:1px solid #333;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.tab.on{background:#3a2e00;border-color:#d4a017;color:#d4a017}
+#sy{min-height:20px;color:#d4a017;font-size:13px;margin-bottom:6px}
+#summary{font-size:13px;color:#888;margin-bottom:10px}
+.email-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.card-head{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;flex-wrap:wrap}
+.card-head:hover{background:#202020}
+.dot{width:7px;height:7px;border-radius:50%;background:#d4a017;flex-shrink:0}
+.dot.seen{background:#333}
+.cat-badge{padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;flex-shrink:0;letter-spacing:.03em}
+.cb-ks26{background:#0a2a4a;color:#5ab0e0}
+.cb-monthly{background:#122a12;color:#7ec850}
+.cb-initiation{background:#1a1230;color:#a07ed0}
+.cb-q{background:#2a1800;color:#e0a040}
+.cb-other{background:#2a2a2a;color:#777}
+.from-name{font-weight:600;color:#ddd;white-space:nowrap}
+.from-em{color:#666;font-size:12px;white-space:nowrap}
+.subj{color:#aaa;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.edate{color:#555;font-size:12px;flex-shrink:0}
+.card-body-wrap{display:none;border-top:1px solid #222;padding:8px 14px}
+.card-body-wrap.open{display:block}
+.body-text{white-space:pre-wrap;word-wrap:break-word;color:#777;font-size:13px;max-height:180px;overflow-y:auto}
+.card-draft{padding:10px 14px 12px;border-top:1px solid #222}
+.drow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.drow label{color:#555;font-size:12px;width:55px;flex-shrink:0}
+.drow input{background:#0d0d0d;color:#ccc;border:1px solid #333;border-radius:4px;padding:4px 8px;font-size:12px;outline:none;flex:1;font-family:inherit}
+.drow input:focus{border-color:#d4a017}
+.dta{width:100%;background:#0d0d0d;color:#ccc;border:1px solid #333;border-radius:4px;padding:7px 10px;font-size:13px;resize:vertical;outline:none;font-family:inherit;min-height:110px;margin-bottom:8px}
+.dta:focus{border-color:#d4a017}
+.card-actions{display:flex;gap:8px;align-items:center}
+.btn-send{background:#1a3a1a;color:#7ec850;border:1px solid #2a5a2a;border-radius:5px;padding:4px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-send:hover{border-color:#7ec850;background:#1e3e1e}
+.btn-skip{background:#222;color:#666;border:1px solid #333;border-radius:5px;padding:4px 13px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-skip:hover{color:#999;border-color:#666}
+.ok-sent{color:#7ec850;font-size:12px}
+.btn-update{background:#1a2a1a;color:#70c870;border:1px solid #2a4a2a;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-update:hover{border-color:#70c870;background:#223a22}
+.btn-add{background:#1a1a2a;color:#8888cc;border:1px solid #333;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-add:hover{border-color:#8888cc;background:#22223a}
+.btn-add.on{background:#22223a;border-color:#8888cc}
+.card-add{border-top:1px solid #222;padding:10px 14px 12px;background:#141414;display:none}
+.add-ok{color:#7ec850;font-size:13px;padding:4px 0}
+.arow{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.arow label{color:#555;font-size:12px;width:62px;flex-shrink:0}
+.arow input,.arow select{background:#0d0d0d;color:#ccc;border:1px solid #333;border-radius:4px;padding:4px 8px;font-size:12px;outline:none;font-family:inherit;flex:1}
+.arow input:focus,.arow select:focus{border-color:#d4a017}
+.btn-submit-add{background:#1a3a1a;color:#7ec850;border:1px solid #2a5a2a;border-radius:5px;padding:4px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit;margin-top:6px}
+.btn-submit-add:hover{border-color:#7ec850}
+.flag-group{display:flex;align-items:center;gap:5px;margin-left:auto;padding-left:12px;border-left:1px solid #2a2a2a}
+.flag-lbl{color:#444;font-size:11px;font-weight:700}
+.btn-flag{background:#1a1200;color:#888;border:1px solid #333;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-flag:hover{border-color:#e0a040;color:#e0a040}
+.btn-flag.on{background:#2a1800;color:#f0c040;border-color:#e0a040}
+.flag-ind{font-size:11px;margin-left:4px}
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <span class="nav-title">📧 Email Scanner</span>
+  <label style="color:#777;font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer">
+    <input type="checkbox" id="chkMark"> Mark as read
+  </label>
+  <button class="btn" onclick="scan()">🔍 Scan unread</button>
+  <button class="btn" onclick="location.href='yoga.html'">← Admin</button>
+</div>
+
+<div id="sy"></div>
+<div id="summary"></div>
+
+<div class="tabs" id="tabs" style="display:none">
+  <button class="tab on" data-tab="all"        onclick="setTab('all')">All</button>
+  <button class="tab"    data-tab="ks26"       onclick="setTab('ks26')">⛰ KS26</button>
+  <button class="tab"    data-tab="monthly"    onclick="setTab('monthly')">📅 Monthly</button>
+  <button class="tab"    data-tab="initiation" onclick="setTab('initiation')">✨ Initiation</button>
+  <button class="tab"    data-tab="q"          onclick="setTab('q')">❓ Q</button>
+  <button class="tab"    data-tab="other"      onclick="setTab('other')">Other</button>
+</div>
+
+<div id="emailList"></div>
+
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+
+if (!sessionStorage.getItem('adminAuth')) {
+  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+}
+
+var SK        = 'nc_emails_v1';
+var emailData = {ks26:[],monthly:[],initiation:[],q:[],other:[]};
+var activeTab = 'all';
+var done      = new Set();
+var lastScan  = '';
+
+function sy(m){document.getElementById('sy').textContent=m;}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function saveState(){
+  localStorage.setItem(SK, JSON.stringify({emailData:emailData, done:[...done], lastScan:lastScan}));
+}
+function loadState(){
+  try{
+    var p=JSON.parse(localStorage.getItem(SK)||'null');
+    if(!p) return false;
+    emailData=p.emailData||{ks26:[],monthly:[],initiation:[],q:[],other:[]};
+    done=new Set(p.done||[]);
+    lastScan=p.lastScan||'';
+    return unresolved(allEmails()).length>0;
+  }catch(e){return false;}
+}
+
+function allEmails(){return [].concat(emailData.ks26||[],emailData.monthly||[],emailData.initiation||[],emailData.q||[],emailData.other||[]);}
+function tabEmails(){return activeTab==='all'?allEmails():(emailData[activeTab]||[]);}
+function unresolved(list){return (list||[]).filter(function(e){return !done.has(e.num);});}
+
+var catLabels={ks26:'KS26',monthly:'MONTHLY',initiation:'INITIATION',q:'Q',other:'OTHER'};
+function reSubj(s){return /^re:/i.test(s)?s:'Re: '+s;}
+
+function updateTabs(){
+  var u={
+    all:        unresolved(allEmails()).length,
+    ks26:       unresolved(emailData.ks26).length,
+    monthly:    unresolved(emailData.monthly).length,
+    initiation: unresolved(emailData.initiation).length,
+    q:          unresolved(emailData.q).length,
+    other:      unresolved(emailData.other).length
+  };
+  document.querySelector('[data-tab="all"]').textContent        ='All ('           +u.all+')';
+  document.querySelector('[data-tab="ks26"]').textContent       ='⛰ KS26 ('       +u.ks26+')';
+  document.querySelector('[data-tab="monthly"]').textContent    ='📅 Monthly ('    +u.monthly+')';
+  document.querySelector('[data-tab="initiation"]').textContent ='✨ Initiation ('  +u.initiation+')';
+  document.querySelector('[data-tab="q"]').textContent          ='❓ Q ('           +u.q+')';
+  document.querySelector('[data-tab="other"]').textContent      ='Other ('         +u.other+')';
+  var pre=lastScan?'Last scan: <b>'+esc(lastScan)+'</b> — ':'';
+  document.getElementById('summary').innerHTML=pre
+    +'Unresolved: <b>'+u.all+'</b> &nbsp; KS26: <b>'+u.ks26+'</b> &nbsp; Monthly: <b>'+u.monthly
+    +'</b> &nbsp; Q: <b>'+u.q+'</b> &nbsp; Initiation: <b>'+u.initiation+'</b> &nbsp; Other: <b>'+u.other+'</b>';
+  document.getElementById('tabs').style.display='flex';
+}
+
+function setTab(t){
+  activeTab=t;
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
+  render();
+}
+
+function render(){
+  var emails=unresolved(tabEmails());
+  if(!emails.length){
+    document.getElementById('emailList').innerHTML=
+      '<div style="text-align:center;padding:30px;color:#444">'
+      +(unresolved(allEmails()).length?'No unresolved emails in this category.':'All resolved. Click Scan for new unread emails.')
+      +'</div>';
+    return;
+  }
+  var html='';
+  emails.forEach(function(e){
+    html+='<div class="email-card" id="ec_'+e.num+'">'
+      +'<div class="card-head" onclick="toggleBody('+e.num+')">'
+      +'<span class="dot'+(e.seen?' seen':'')+'"></span>'
+      +'<span class="cat-badge cb-'+e.cat+'">'+catLabels[e.cat]+'</span>'
+      +'<span class="from-name">'+esc(e.from_name||e.from_email)+'</span>'
+      +'<span class="from-em">&lt;'+esc(e.from_email)+'&gt;</span>'
+      +'<span class="subj">'+esc(e.subject)+'</span>'
+      +'<span class="edate">'+esc(e.date)+'</span>'
+      +'<span class="flag-ind" id="fi_'+e.num+'" style="display:'+(e.flagged?'inline':'none')+'">🚩</span>'
+      +'</div>'
+      +'<div class="card-body-wrap" id="bw_'+e.num+'">'
+      +'<div class="body-text">'+esc(e.body)+'</div>'
+      +'</div>'
+      +'<div class="card-draft">'
+      +'<div class="drow"><label>To:</label><input id="to_'+e.num+'" value="'+esc(e.reply_to||e.from_email)+'"></div>'
+      +'<div class="drow"><label>Subject:</label><input id="sub_'+e.num+'" value="'+esc(e.subject_reply||reSubj(e.subject))+'"></div>'
+      +'<textarea class="dta" id="ta_'+e.num+'">'+esc(e.draft)+'</textarea>'
+      +'<div class="card-actions">'
+      +'<button class="btn-send" onclick="sendDraft('+e.num+')">✉ Send</button>'
+      +'<button class="btn-skip" onclick="markDone('+e.num+')">✓ Done</button>'
+      +'<button class="btn-update" id="bu_'+e.num+'" onclick="autoUpdate('+e.num+')">↻ Update</button>'
+      +'<span class="ok-sent" id="ok_'+e.num+'" style="display:none">Sent ✓</span>'
+      +'<span class="ok-sent" id="upd_'+e.num+'" style="display:none;color:#70c870"></span>'
+      +'<button class="btn-add" id="ba_'+e.num+'" onclick="toggleAddForm('+e.num+')">➕ Add</button>'
+      +'<div class="flag-group"><span class="flag-lbl">F</span>'
+      +'<button class="btn-flag'+(e.flagged?' on':'')+'" id="flag_'+e.num+'" onclick="toggleFlag('+e.num+')">'+(e.flagged?'🚩 Flagged':'🚩 Flag')+'</button>'
+      +'</div>'
+      +'</div>'
+      +'</div>'
+      +'<div class="card-add" id="ca_'+e.num+'"></div>'
+      +'</div>';
+  });
+  document.getElementById('emailList').innerHTML=html;
+}
+
+// Persist edits to draft/to/subject in real time
+document.addEventListener('input',function(ev){
+  var id=ev.target.id||'', num, field;
+  if     (id.startsWith('ta_')) {num=parseInt(id.slice(3));field='draft';}
+  else if(id.startsWith('to_')) {num=parseInt(id.slice(3));field='reply_to';}
+  else if(id.startsWith('sub_')){num=parseInt(id.slice(4));field='subject_reply';}
+  else return;
+  for(var cat in emailData){
+    var idx=emailData[cat].findIndex(function(e){return e.num===num;});
+    if(idx>=0){emailData[cat][idx][field]=ev.target.value;break;}
+  }
+  saveState();
+});
+
+function toggleBody(num){
+  var el=document.getElementById('bw_'+num);
+  if(el)el.classList.toggle('open');
+}
+
+function markDone(num){
+  done.add(num);
+  var el=document.getElementById('ec_'+num);
+  if(el)el.remove();
+  updateTabs();
+  saveState();
+}
+
+async function sendDraft(num){
+  var to  =document.getElementById('to_' +num).value.trim();
+  var subj=document.getElementById('sub_'+num).value.trim();
+  var msg =document.getElementById('ta_' +num).value.trim();
+  if(!to||!subj||!msg){sy('Fill in To, Subject, and message.');return;}
+  sy('Sending…');
+  try{
+    var res=await fetch(PROXY+'?action=send_admin',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:to,subject:subj,message:msg})
+    });
+    var j=await res.json();
+    if(j.error){sy('Error: '+j.error);return;}
+    sy('');
+    document.getElementById('ok_'+num).style.display='inline';
+    setTimeout(function(){markDone(num);},1800);
+  }catch(e){sy('Error: '+e.message);}
+}
+
+function mergeWithExisting(newCats){
+  var map={};
+  allEmails().forEach(function(e){if(!done.has(e.num))map[e.num]=e;});
+  Object.keys(newCats).forEach(function(cat){
+    (newCats[cat]||[]).forEach(function(e){if(!map[e.num])map[e.num]=e;});
+  });
+  var r={ks26:[],monthly:[],initiation:[],q:[],other:[]};
+  Object.values(map).forEach(function(e){var c=e.cat||'other';if(!r[c])r[c]=[];r[c].push(e);});
+  return r;
+}
+
+async function scan(){
+  sy('Scanning unread emails…');
+  var markRead=document.getElementById('chkMark').checked;
+  try{
+    var res=await fetch(PROXY+'?action=email_scan',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({mark_read:markRead})
+    });
+    var j=await res.json();
+    if(j.error){sy('IMAP Error: '+j.error);return;}
+    sy('');
+    emailData=mergeWithExisting(j.cats||{});
+    lastScan=new Date().toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    saveState();
+    activeTab='all';
+    document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab==='all');});
+    updateTabs();
+    render();
+  }catch(e){sy('Error: '+e.message);}
+}
+
+async function autoUpdate(num){
+  var e=getEmail(num); if(!e) return;
+  var p=e.parsed||{};
+  var email=(p.email||e.reply_to||e.from_email||'').trim();
+  var name =(p.name ||e.from_name||'').trim();
+  if(!email){sy('No email found in message');return;}
+  sy('Updating…');
+  try{
+    var action,payload,j;
+    if(e.cat==='monthly'||e.cat==='q'){
+      if(!p.course){
+        sy('Course not detected — use ➕ Add form');
+        return;
+      }
+      // Allow create only for G8 (new group forming) or explicit Add form
+      var allowCreate = p.group==='8';
+      action='upsert_sub';
+      payload={name:name,email:email,course:p.course,group:p.group||'',status:'P',create_if_new:allowCreate};
+    } else if(e.cat==='ks26'){
+      action='ks26_upsert';
+      payload={name:name,email:email,tax:p.amount||'630',session:p.session||'live',notes:p.nota||''};
+    } else if(e.cat==='initiation'){
+      action='initiations_append';
+      payload={name:name,email:email,city:'Bucuresti',status:'new',notes:p.nota||''};
+    } else {
+      // Other: try as monthly, only update existing
+      if(!p.course){sy('Cannot determine course — check manually');return;}
+      action='upsert_sub';
+      payload={name:name,email:email,course:p.course,group:p.group||'',status:'P',create_if_new:false};
+    }
+    var res=await fetch(PROXY+'?action='+action,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    j=await res.json();
+    sy('');
+    if(j.error){sy('Error: '+j.error);return;}
+    if(j.action==='not_found'){
+      sy('Student not found — use ➕ Add to create new');
+      return;
+    }
+    var verb=j.action==='created'?'Created':'Updated';
+    var updEl=document.getElementById('upd_'+num);
+    if(updEl){updEl.textContent=verb+' ✓';updEl.style.display='inline';setTimeout(function(){updEl.style.display='none';},3000);}
+    e.updated=true; saveState();
+  }catch(err){sy('Error: '+err.message);}
+}
+
+function renderAddForm(e){
+  var p=e.parsed||{};
+  var nv=esc(p.name||e.from_name||'');
+  var ev=esc((p.email||e.reply_to||e.from_email||'').trim());
+  var courses=['YTT-M1','YTT-M2','YTT-M3','I Ching','AL'];
+  var cOpts=courses.map(function(c){return '<option value="'+c+'"'+(p.course===c?' selected':'')+'>'+c+'</option>';}).join('');
+  var n=e.num, c=e.cat;
+  if(c==='monthly'||c==='q'){
+    return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
+      +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
+      +'<div class="arow"><label>Course</label><select id="ac_'+n+'">'+cOpts+'</select></div>'
+      +'<div class="arow"><label>Group #</label><input id="ag_'+n+'" value="'+esc(p.group||'')+'" placeholder="e.g. 6"></div>'
+      +'<div class="arow"><label>Status</label><select id="as_'+n+'">'
+      +'<option value="P">P — paid</option><option value="F">F — forever</option><option value="G">G — gratis</option></select></div>'
+      +(p.is_order?'<div style="color:#e0a040;font-size:11px;margin-bottom:4px">⚡ WooCommerce order'+(p.nota?' — Nota: <b>'+esc(p.nota)+'</b>':'')+'</div>':'')
+      +(!p.course?'<div style="color:#e07070;font-size:11px;margin-bottom:4px">⚠ Course not detected — check email body</div>':'')
+      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'monthly\')">+ Add to Students</button>';
+  } else if(c==='ks26'){
+    return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
+      +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
+      +'<div class="arow"><label>Session</label><select id="ases_'+n+'">'
+      +'<option value="live"'+(p.session==='live'?' selected':'')+'>live</option>'
+      +'<option value="replay"'+(p.session==='replay'?' selected':'')+'>replay</option></select></div>'
+      +'<div class="arow"><label>Amount</label><input id="aam_'+n+'" value="'+esc(p.amount||'')+'" placeholder="630"></div>'
+      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'ks26\')">+ Add to KS26</button>';
+  } else if(c==='initiation'){
+    return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
+      +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
+      +'<div class="arow"><label>City</label><input id="acy_'+n+'" value="Bucuresti"></div>'
+      +'<div class="arow"><label>Status</label><select id="ast_'+n+'">'
+      +'<option value="new">new</option><option value="confirmed">confirmed</option>'
+      +'<option value="waitlist">waitlist</option><option value="ineligible">ineligible</option></select></div>'
+      +'<div class="arow"><label>Notes</label><input id="ant_'+n+'" value="'+esc(p.notes||'')+'"></div>'
+      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'initiation\')">+ Add to Initiations</button>';
+  }
+  return '<p style="color:#555;font-size:12px">Categorize as Monthly / KS26 / Initiation first to enable adding.</p>';
+}
+
+function toggleAddForm(num){
+  var e=getEmail(num);if(!e)return;
+  var ca=document.getElementById('ca_'+num);
+  var ba=document.getElementById('ba_'+num);
+  if(!ca)return;
+  if(ca.style.display==='block'){ca.style.display='none';if(ba)ba.classList.remove('on');}
+  else{ca.innerHTML=renderAddForm(e);ca.style.display='block';if(ba)ba.classList.add('on');}
+}
+
+async function submitAdd(num,cat){
+  var e=getEmail(num);if(!e)return;
+  var name =(document.getElementById('an_'+num)||{}).value||'';
+  var email=(document.getElementById('ae_'+num)||{}).value||'';
+  if(!email){sy('Email required');return;}
+  sy('Adding…');
+  var payload,action;
+  try{
+    if(cat==='monthly'){
+      action='upsert_sub';
+      payload={name:name,email:email,
+        course:document.getElementById('ac_'+num).value,
+        group: document.getElementById('ag_'+num).value,
+        status:document.getElementById('as_'+num).value};
+    } else if(cat==='ks26'){
+      action='ks26_append';
+      payload={name:name,email:email,
+        tax:    document.getElementById('aam_'+num).value||'630',
+        session:document.getElementById('ases_'+num).value,
+        notes:''};
+    } else if(cat==='initiation'){
+      action='initiations_append';
+      payload={name:name,email:email,
+        city:  document.getElementById('acy_'+num).value||'Bucuresti',
+        status:document.getElementById('ast_'+num).value||'new',
+        notes: document.getElementById('ant_'+num).value||''};
+    }
+    var res=await fetch(PROXY+'?action='+action,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    var j=await res.json();
+    if(j.error){sy('Error: '+j.error);return;}
+    sy('');
+    var label={monthly:'Students (Airtable)',ks26:'KS26',initiation:'Initiations'}[cat]||cat;
+    var verb=j.action==='created'?'Created':'Updated';
+    var ca=document.getElementById('ca_'+num);
+    if(ca)ca.innerHTML='<div class="add-ok">✓ '+verb+': '+esc(name||email)+' → '+label+'</div>';
+    e.added=true;
+    saveState();
+  }catch(err){sy('Error: '+err.message);}
+}
+
+function getEmail(num){
+  for(var cat in emailData){
+    var e=emailData[cat].find(function(x){return x.num===num;});
+    if(e) return e;
+  }
+  return null;
+}
+
+async function toggleFlag(num){
+  var e=getEmail(num);
+  if(!e) return;
+  var nf=!e.flagged;
+  try{
+    var res=await fetch(PROXY+'?action=email_flag',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({num:num,flag:nf})
+    });
+    var j=await res.json();
+    if(j.error){sy('Flag error: '+j.error);return;}
+    e.flagged=nf;
+    var btn=document.getElementById('flag_'+num);
+    if(btn){btn.className='btn-flag'+(nf?' on':'');btn.textContent=nf?'🚩 Flagged':'🚩 Flag';}
+    var fi=document.getElementById('fi_'+num);
+    if(fi) fi.style.display=nf?'inline':'none';
+    saveState();
+  }catch(err){sy('Error: '+err.message);}
+}
+
+// On load: restore from localStorage
+(function(){
+  if(loadState()){
+    activeTab='all';
+    document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab==='all');});
+    updateTabs();
+    render();
+  }
+})();
+</script>
+</body>
+</html>

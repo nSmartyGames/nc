@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Student Portal</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px}
+.login-box{background:#242424;border:1px solid #3a3a3a;border-radius:12px;padding:30px;width:100%;max-width:380px;margin-top:60px;text-align:center}
+.login-box h2{font-size:18px;color:#f0c030;margin-bottom:6px}
+.login-box p{font-size:12px;color:#888;margin-bottom:20px}
+.login-box .logo{font-size:32px;margin-bottom:14px}
+.code-inputs{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
+.code-inputs input{width:44px;height:52px;background:#1a1a1a;border:2px solid #3a3a3a;border-radius:8px;color:#f0c030;font-size:22px;font-weight:700;text-align:center;outline:none;font-family:inherit}
+.code-inputs input:focus{border-color:#d4a017}
+.login-btn{width:100%;background:#3a2e00;color:#f0c030;border:1px solid #d4a017;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-weight:600;margin-bottom:12px}
+.login-btn:hover{background:#4a3e00}
+.login-btn:disabled{opacity:.5;cursor:not-allowed}
+.send-link{font-size:12px;color:#5aa0d0;cursor:pointer;background:none;border:none;text-decoration:underline}
+.send-link:hover{color:#7ac0f0}
+.login-msg{font-size:11px;margin-top:10px;min-height:16px}
+.msg-ok{color:#7ec850}
+.msg-err{color:#e07070}
+.email-box{margin-top:14px;display:none}
+.email-box input{width:100%;background:#1a1a1a;border:1px solid #3a3a3a;border-radius:6px;color:#d4a017;font-size:13px;padding:8px 10px;outline:none;font-family:inherit;margin-bottom:8px}
+.email-box input:focus{border-color:#d4a017}
+.email-box button{width:100%;background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:8px;font-size:12px;cursor:pointer}
+.email-box button:hover{border-color:#d4a017}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">🧘</div>
+  <h2>Student Portal</h2>
+  <p>Enter your 5-digit login code</p>
+  <div class="code-inputs" id="codeInputs">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+  </div>
+  <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Login</button>
+  <button class="send-link" onclick="toggleEmailBox()">Don't have a code? Get one via email</button>
+  <div class="email-box" id="emailBox">
+    <input type="email" id="emailInput" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendCode()">
+    <button onclick="sendCode()">Send me a code</button>
+  </div>
+  <div class="login-msg" id="loginMsg"></div>
+</div>
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+var ADMIN_CODE = '99999';
+
+var inputs = document.querySelectorAll('#codeInputs input');
+inputs.forEach(function(inp, i) {
+  inp.addEventListener('input', function() {
+    if (inp.value.length === 1 && i < 4) inputs[i+1].focus();
+    checkCode();
+  });
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i-1].focus();
+    if (e.key === 'Enter') doLogin();
+  });
+  inp.addEventListener('paste', function(e) {
+    e.preventDefault();
+    var txt = (e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').substring(0,5);
+    for (var j=0;j<5;j++) inputs[j].value = txt[j]||'';
+    if (txt.length===5) inputs[4].focus();
+    checkCode();
+  });
+});
+
+function getCode(){var c='';inputs.forEach(function(i){c+=i.value;});return c;}
+function checkCode(){document.getElementById('loginBtn').disabled=getCode().length!==5;}
+function msg(text,ok){var m=document.getElementById('loginMsg');m.textContent=text;m.className='login-msg '+(ok?'msg-ok':'msg-err');}
+function toggleEmailBox(){var eb=document.getElementById('emailBox');eb.style.display=eb.style.display==='none'?'block':'none';}
+
+async function sendCode(){
+  var email=document.getElementById('emailInput').value.trim();
+  if(!email){msg('Please enter your email',false);return;}
+  msg('Sending…',true);
+  try{
+    var res=await fetch(PROXY+'?action=sendcode',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email})
+    }).then(function(r){return r.json();});
+    if(res.ok){msg('Code sent! Check your inbox.',true);document.getElementById('emailBox').style.display='none';}
+    else msg(res.error||'Failed to send code',false);
+  }catch(e){msg('Network error',false);}
+}
+
+async function doLogin(){
+  var code=getCode();
+  if(code.length!==5)return;
+  if(code===ADMIN_CODE){
+    sessionStorage.setItem('adminAuth','1');
+    window.location.href=location.pathname==='/'?'admin':'yoga.html';
+    return;
+  }
+  msg('Logging in…',true);
+  try{
+    var res=await fetch(PROXY+'?action=login',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:code})
+    }).then(function(r){return r.json();});
+    if(res.ok&&res.student){
+      sessionStorage.setItem('student',JSON.stringify(res.student));
+      window.location.href=location.pathname==='/'?'student/':'student.html';
+    }else{
+      msg(res.error||'Invalid code',false);
+    }
+  }catch(e){msg('Network error',false);}
+}
+</script>
+</body>
+</html>
