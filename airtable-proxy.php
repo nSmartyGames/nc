@@ -58,7 +58,7 @@ function atAll($path_base) {
     do {
         $path   = $path_base . ($offset ? '&offset=' . urlencode($offset) : '');
         $result = json_decode(at('GET', $path), true);
-        if (isset($result['error'])) return $result;
+        if (isset($result['error']) || isset($result['errors'])) return $result;
         $records = array_merge($records, $result['records'] ?? array());
         $offset  = $result['offset'] ?? null;
     } while ($offset);
@@ -240,7 +240,7 @@ switch ($action) {
             }
         }
         if ($found) {
-            $isAdmin = ($code === '99999');
+            $isAdmin = ($code === '24865');
             echo json_encode(array('ok' => true, 'student' => $found, 'isAdmin' => $isAdmin));
         } else {
             echo json_encode(array('error' => 'Invalid code'));
@@ -324,9 +324,10 @@ switch ($action) {
         $course = trim($_GET['course'] ?? '');
         $vimeo_aliases = ['AL' => 'Alchimie'];
         if (isset($vimeo_aliases[$course])) $course = $vimeo_aliases[$course];
-        $from   = intval($_GET['from'] ?? 0);
-        $to     = intval($_GET['to']   ?? 0);
-        if (!$course || !$from || !$to || $from > $to) {
+        $from = intval($_GET['from'] ?? 0);
+        $to   = intval($_GET['to']   ?? 0);
+        $all_mode = ($from <= 0 && $to <= 0);
+        if (!$course || (!$all_mode && $from > $to)) {
             echo json_encode(array('error' => 'Invalid parameters'));
             break;
         }
@@ -353,7 +354,7 @@ switch ($action) {
             echo json_encode(array('error' => 'No Vimeo folder found matching "' . $course . '"'));
             break;
         }
-        // Fetch all videos from the folder, filter those whose title contains a number in [from, to]
+        // Fetch all videos from the folder, extract class number via C0*(\d+) pattern
         $videos = array();
         $page   = 1;
         do {
@@ -371,12 +372,19 @@ switch ($action) {
             if (isset($data['error'])) { echo json_encode(array('error' => $data['error'])); break 2; }
             foreach (($data['data'] ?? array()) as $video) {
                 $name = $video['name'] ?? '';
-                for ($num = $from; $num <= $to; $num++) {
-                    // match whole number: preceded by start/non-alphanumeric/C (handles "course 4" and "M3C4"), not followed by digit
-                    if (preg_match('/(?:^|(?<=[^a-zA-Z\d])|(?<=[Cc]))' . $num . '(?!\d)/', $name)) {
-                        $videos[] = array('class_num' => $num, 'link' => $video['link'] ?? '');
-                        break;
+                $num  = null;
+                // Primary: extract number from C01/C1 pattern (handles zero-padded)
+                if (preg_match('/[Cc]0*(\d+)/', $name, $cm)) {
+                    $num = intval($cm[1]);
+                } else {
+                    // Fallback: bare number preceded by non-alphanumeric or start
+                    if (preg_match('/(?:^|(?<=[^a-zA-Z\d]))(\d+)(?!\d)/', $name, $cm)) {
+                        $num = intval($cm[1]);
                     }
+                }
+                if ($num === null) continue;
+                if ($all_mode || ($num >= $from && $num <= $to)) {
+                    $videos[] = array('class_num' => $num, 'link' => $video['link'] ?? '');
                 }
             }
             $page++;
@@ -793,36 +801,31 @@ switch ($action) {
         echo json_encode(['ok' => true]);
         break;
 
-    case 'initiations_read':
-        $f = __DIR__ . '/initiations.csv';
-        if (!file_exists($f)) { echo json_encode(['rows' => []]); break; }
-        $rows = [];
-        if (($fh = fopen($f, 'r')) !== false) {
-            fgetcsv($fh);
-            while (($row = fgetcsv($fh)) !== false) {
-                if (count($row) < 3) continue;
-                $rows[] = ['name' => trim($row[0]), 'email' => trim($row[1]), 'city' => trim($row[2]), 'status' => trim($row[3] ?? ''), 'notes' => trim($row[4] ?? ''), 'date' => trim($row[5] ?? '')];
-            }
-            fclose($fh);
+    case 'student_sub':
+        $em = strtolower(trim($_GET['email'] ?? ''));
+        if (!$em) { echo json_encode(['error' => 'email required']); break; }
+        $fsub = 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fldUvZSA5jTlsLQFH&fields[]=fld03gdtFjOIkn7wB';
+        $all  = atAll("$TBL_S?$fsub");
+        $found = null;
+        foreach (($all['records'] ?? []) as $rec) {
+            $f = $rec['fields'] ?? [];
+            if (strtolower(trim($f['email'] ?? '')) === $em) { $found = $rec; break; }
         }
-        echo json_encode(['rows' => $rows]);
+        if (!$found) { echo json_encode(['found' => false]); break; }
+        $ff   = $found['fields'] ?? [];
+        $subs = json_decode($ff['subscriptions'] ?? '{}', true) ?: [];
+        echo json_encode(['found' => true, 'name' => $ff['name'] ?? '', 'note' => $ff['note'] ?? '', 'courses' => array_keys($subs)]);
         break;
 
     case 'initiations_append':
-        $name   = str_replace(["\n","\r"], '', trim($body['name']   ?? ''));
-        $email  = str_replace(["\n","\r"], '', trim($body['email']  ?? ''));
-        $city   = str_replace(["\n","\r"], '', trim($body['city']   ?? ''));
-        $status = str_replace(["\n","\r"], '', trim($body['status'] ?? 'new'));
-        $notes  = str_replace(["\n","\r"], '', trim($body['notes']  ?? ''));
-        $date   = date('Y-m-d');
+        $name   = str_replace([',',"\n","\r"], '', trim($body['name']   ?? ''));
+        $email  = str_replace([',',"\n","\r"], '', trim($body['email']  ?? ''));
+        $status = str_replace([',',"\n","\r"], '', trim($body['status'] ?? 'new'));
         if (!$name && !$email) { echo json_encode(['error' => 'Name or email required']); break; }
-        $f = __DIR__ . '/initiations.csv';
-        if (!file_exists($f)) file_put_contents($f, "name,email,city,status,notes,date\n");
-        $fh = fopen($f, 'a');
-        if (!$fh) { echo json_encode(['error' => 'Write failed']); break; }
-        fputcsv($fh, [$name, $email, $city, $status, $notes, $date]);
-        fclose($fh);
-        echo json_encode(['ok' => true]);
+        $csv_file = __DIR__ . '/mahamrityunjaya.csv';
+        $line = $name . ',' . $email . ',' . $status . "\n";
+        $ok = file_put_contents($csv_file, $line, FILE_APPEND | LOCK_EX);
+        echo $ok !== false ? json_encode(['ok' => true]) : json_encode(['error' => 'Write failed']);
         break;
 
     default:

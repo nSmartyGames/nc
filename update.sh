@@ -24,6 +24,9 @@ curl --ftp-pasv \
   --silent --show-error
 echo "Done: $FILE uploaded at $(date '+%H:%M:%S')"
 
+# Clear OPcache so PHP picks up new code immediately
+curl -s "https://nicolaecatrina.com/app/opcache_reset.php" > /dev/null 2>&1 || true
+
 # Refresh matching browser tabs
 case "$FILE" in
   student.html)

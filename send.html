@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Send Monthly Email</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;padding:16px;min-height:100vh}
+.nav-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.nav-title{font-size:17px;font-weight:700;color:#d4a017;margin-right:auto}
+.nav-btn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.nav-btn:hover{border-color:#d4a017;background:#333}
+#sy{font-size:13px;color:#888;min-height:18px}
+.section-label{font-size:12px;color:#888;margin-bottom:6px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.groups-section{margin-bottom:14px}
+.groups-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.gbt{background:#3a2e00;color:#f0c030;border:1px solid #d4a017;border-radius:7px;padding:5px 14px;font-size:14px;cursor:pointer;font-weight:600;font-family:inherit;user-select:none}
+.gbt.off{background:#2a2a2a;color:#555;border-color:#333}
+.gbt:hover{opacity:.85}
+.bcc-section{margin-bottom:12px}
+.bcc-header{display:flex;align-items:center;gap:10px;margin-bottom:5px}
+.bcc-count{font-size:15px;font-weight:700;color:#7ec850}
+.bcc-toggle{background:none;border:none;color:#666;font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0}
+.bcc-toggle:hover{color:#d4a017}
+.bcc-list{background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;font-size:12px;color:#777;word-break:break-all;max-height:100px;overflow-y:auto;margin-bottom:6px;display:none}
+.bcc-list.open{display:block}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.abtn{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.abtn:hover{border-color:#d4a017;background:#333}
+.abtn-primary{background:#1e3a2a;color:#7ec850;border:1px solid #3a6a2a}
+.abtn-primary:hover{border-color:#7ec850;background:#224020}
+.field-label{font-size:12px;color:#888;margin-bottom:4px}
+.subj-input{width:100%;background:#111;border:1px solid #333;border-radius:5px;color:#d4a017;font-size:14px;padding:7px 10px;outline:none;font-family:inherit;margin-bottom:14px}
+.subj-input:focus{border-color:#7a5c00}
+.body-ta{width:100%;background:#111;border:1px solid #333;border-radius:5px;color:#ccc;font-size:13px;padding:8px 10px;outline:none;font-family:inherit;min-height:400px;resize:vertical;line-height:1.6;margin-bottom:14px}
+.body-ta:focus{border-color:#7a5c00}
+.queue-box{background:#111;border:1px solid #2a2a2a;border-radius:8px;padding:14px;margin-bottom:14px}
+.queue-title{font-size:13px;font-weight:700;color:#d4a017;margin-bottom:8px}
+.queue-better{background:#0d2a0d;border:1px solid #2a6a2a;border-radius:6px;padding:9px 12px;font-size:12px;color:#7ec850;margin-bottom:10px;line-height:1.5}
+.queue-better strong{color:#a0e870}
+.queue-note{font-size:12px;color:#777;margin-bottom:8px}
+.progress-wrap{background:#222;border-radius:4px;height:7px;margin-bottom:8px;display:none;overflow:hidden}
+.progress-bar{background:#7ec850;height:7px;border-radius:4px;width:0%;transition:width .4s}
+.queue-status{font-size:13px;color:#d4a017;margin-bottom:8px;min-height:18px;word-break:break-all}
+.queue-controls{display:flex;gap:8px;flex-wrap:wrap}
+.btn-start{background:#1e3a1e;color:#7ec850;border:1px solid #2a5a2a;border-radius:5px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn-start:hover{border-color:#7ec850;background:#224022}
+.btn-stop{background:#3a1e1e;color:#e07070;border:1px solid #6a2a2a;border-radius:5px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit;display:none}
+.btn-stop:hover{border-color:#e07070;background:#4a2020}
+.btn-resume{background:#3a2e00;color:#f0c030;border:1px solid #7a5c00;border-radius:5px;padding:6px 16px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;display:none}
+.btn-resume:hover{border-color:#f0c030;background:#4a3e00}
+.progress-bar.error{background:#e07070}
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <span class="nav-title">📤 Send Monthly Email</span>
+  <span id="sy"></span>
+  <button class="nav-btn" onclick="location.href='yoga.html'">← Admin</button>
+</div>
+
+<div class="groups-section">
+  <div class="section-label">Groups — click to toggle</div>
+  <div class="groups-wrap" id="groupBtns">Loading…</div>
+</div>
+
+<div class="bcc-section">
+  <div class="bcc-header">
+    <span class="bcc-count" id="bccCount">0 emails</span>
+    <button class="bcc-toggle" id="bccToggleBtn" onclick="toggleBccList()">show list</button>
+  </div>
+  <div class="bcc-list" id="bccList"></div>
+</div>
+
+<div class="action-row">
+  <button class="abtn abtn-primary" onclick="copyBCC()">📋 Copy BCC</button>
+  <button class="abtn" onclick="copyBody()">📋 Copy Body</button>
+  <button class="abtn" onclick="openMailto()">✉ Open in Mail</button>
+</div>
+
+<div class="field-label">Subject:</div>
+<input class="subj-input" id="subjInput" value="Informații lunare — cursuri Nicolae Catrina">
+
+<div class="field-label">Email body:</div>
+<textarea class="body-ta" id="bodyTa" spellcheck="false"></textarea>
+
+<div class="queue-box">
+  <div class="queue-title">⚙ Send via Server (1 email per 70s)</div>
+  <div class="queue-better">
+    💡 <strong>Better approach:</strong> Use <em>Copy BCC</em> above — paste all emails into the BCC field in your email client (Gmail, Outlook) and send once. One SMTP transaction, instant, no rate limits, no 2-hour wait. The queue below is only needed if you want individual personalized sends in the future.
+  </div>
+  <div class="queue-note" id="queueNote"></div>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="queue-status" id="queueStatus"></div>
+  <div class="queue-controls">
+    <button class="btn-start" id="btnStart" onclick="startQueue()">▶ Start Queue</button>
+    <button class="btn-stop"   id="btnStop"   onclick="stopQueue()">■ Stop</button>
+    <button class="btn-resume" id="btnResume" onclick="resumeQueue()">↺ Resume from #<input id="resumeFrom" type="number" min="1" onclick="event.stopPropagation()" style="width:52px;background:#2a2200;border:1px solid #7a5c00;border-radius:4px;color:#f0c030;font-size:13px;padding:1px 4px;font-family:inherit;margin-left:4px;vertical-align:middle" placeholder="…"></button>
+  </div>
+</div>
+
+<script type="text/template" id="emailTemplate">
+Dragii noștri,
+
+
+
+Puteți beneficia de o reducere de 15% pentru toate taxele de participare achitate la centrul nostru din Cluj
+
+Pentru a primi anunțuri și imformații organizatorice cu privire la activitatea online a d-lui Nicolae Catrina și la inițieri, vă rugăm frumos să vă înscrieți pe canalul acesta de Telegram: https://t.me/infonicolaecatrinaro
+
+
+
+De asemenea, vă rugăm frumos să verificați și căsuța de Spam pentru că este posibil să ajungă acolo mail-urile noastre. Am observat că cele mai multe probleme le întâmpinăm cu adresele de yahoo.
+
+
+
+
+
+☀️ Lecțiile lunii mai vor fi trimise pe 1, până la ora 22:00.
+
+
+
+Cei care nu ați achitat deja taxa de participare pentru cursurile la care sunteți înscriși, este necesar să o faceți ‼️până la finalul acestei luni. Vă rugăm frumos nu lăsați pe ultima sută de metri, dacă se poate.
+
+Vă rugăm frumos să nu depășiți termenul pentru că întârzierile neanunțate se penalizează cu 50 lei.
+
+Într-un astfel de caz, veți primi lecțiile ulterior.
+
+
+
+Toate detaliile necesare plății le găsiți pe site-ul www.nicolaecatrina.com (link-urile care vă direcționează către fiecare pagină sunt afișate mai jos).
+
+Vă rugăm insistent să le citiți cu atențiie pentru a evita eventuale neplăceri.
+
+
+
+☀️ Cei care faceți plata cu cardul de credit/debit, vă rugăm completați în formularele de plată grupa din care faceți parte. Aceste informații sunt menționate în fiecare mail cu lecții pe care vi-l trimitem.
+
+
+
+Vă mulțumim foarte frumos pentru înțelegere și cooperare! 🙏🌈
+
+
+
+Link-urile de plată:
+
+
+
+YOGA TANTRICĂ TIBETANĂ
+
+modulul 1,  grupa 6 și 7
+
+https://nicolaecatrina.com/en/yoga-tantrica-tibetana-curs-online-modulul-1/
+
+
+
+YOGA TANTRICĂ TIBETANĂ
+
+modulul 2, grupa 4
+
+https://nicolaecatrina.com/ro/yoga-tantrica-tibetana-curs-online-modulul-2/
+
+
+
+
+
+YOGA TANTRICĂ TIBETANĂ
+
+modulul 3, grupele 1 și 2
+
+https://nicolaecatrina.com/en/ytt-m3/
+
+
+
+ICHING
+
+Grupele 1 și 2
+
+https://nicolaecatrina.com/en/iching/
+
+
+
+ALCHIMIA UNIVERSALĂ
+
+https://nicolaecatrina.com/ro/curs-de-initiere-in-misterele-traditiei-alchimice-universale/
+
+
+
+
+
+Vă dorim zile senine și sărbători binecuvântate! 🙏🧘‍♀️🌈💕
+</script>
+
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+
+if (!sessionStorage.getItem('adminAuth')) {
+  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+}
+
+var FC = {ID:'fldQ7kSY1KZ2bTska',LABEL:'fldqdzbMbgMf4fVU4',GROUPS:'fld4OYOz8TD70oFjP'};
+var FS = {EMAIL:'fldTKQVFs3vrMrwWA',NAME:'fld4Lx0LL4sfYOyy7',SUBS:'fldUvZSA5jTlsLQFH'};
+
+var courses = [], rows = [], groupBtns = [];
+var queueRunning = false, queueStop = false, queueFailed = false, queueTimer = null;
+var queueList = [], queueIdx = 0;
+
+document.getElementById('bodyTa').value =
+  document.getElementById('emailTemplate').textContent.replace(/^\n/,'').replace(/\n$/,'');
+
+function sy(m){document.getElementById('sy').textContent=m;}
+function fv(f,id,name){return f[id]||f[name]||'';}
+function statusLetter(v){return (v||'').replace(/\d+$/,'')||'';}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function load(){
+  sy('Loading…');
+  try{
+    var cr=await (await fetch(PROXY+'?action=courses')).json();
+    courses=(cr.records||[]).map(function(r){
+      var f=r.fields||{};
+      return {id:fv(f,FC.ID,'id'),groups:(fv(f,FC.GROUPS,'groups')||'All').split(',').map(function(g){return g.trim();})};
+    });
+    if(!courses.length) throw 'empty';
+    courses.sort(function(a,b){return a.id.localeCompare(b.id);});
+  }catch(e){
+    courses=[
+      {id:'AL',groups:['All','G4']},
+      {id:'I Ching',groups:['All']},
+      {id:'YTT-M1',groups:['All','G6','G7']},
+      {id:'YTT-M2',groups:['All','G4']},
+      {id:'YTT-M3',groups:['All','G1','G2']}
+    ];
+  }
+  try{
+    var sr=await (await fetch(PROXY+'?action=students')).json();
+    rows=(sr.records||[]).map(function(r){
+      var f=r.fields||{};
+      var subs={};
+      try{subs=JSON.parse(fv(f,FS.SUBS,'subscriptions')||'{}');}catch(e){}
+      return {email:(fv(f,FS.EMAIL,'email')||'').trim().replace(/[;,\s]+$/,''),subscriptions:subs};
+    });
+  }catch(e){rows=[];}
+
+  groupBtns=[];
+  courses.forEach(function(co){
+    var specific=co.groups.filter(function(g){return g!=='All';});
+    if(!specific.length){
+      groupBtns.push({courseId:co.id,group:'All',label:co.id,on:true});
+    }else{
+      specific.forEach(function(g){
+        groupBtns.push({courseId:co.id,group:g,label:co.id+' '+g,on:true});
+      });
+    }
+  });
+  sy('');
+  renderGroupBtns();
+  updateBCC();
+}
+
+function renderGroupBtns(){
+  document.getElementById('groupBtns').innerHTML=groupBtns.map(function(b,i){
+    return '<button class="gbt'+(b.on?'':' off')+'" onclick="toggleGroup('+i+')">'+esc(b.label)+'</button>';
+  }).join('');
+}
+
+function toggleGroup(i){
+  groupBtns[i].on=!groupBtns[i].on;
+  renderGroupBtns();
+  updateBCC();
+}
+
+function getPaidEmails(){
+  var seen={}, list=[];
+  rows.forEach(function(row){
+    if(!row.email) return;
+    groupBtns.forEach(function(b){
+      if(!b.on) return;
+      var sub=row.subscriptions&&row.subscriptions[b.courseId];
+      if(!sub) return;
+      if(b.group!=='All'&&'G'+(sub.G||'')!==b.group) return;
+      var s=statusLetter(sub.curr||'');
+      if((s==='P'||s==='F'||s==='G')&&!seen[row.email]){seen[row.email]=true;list.push(row.email);}
+    });
+  });
+  return list;
+}
+
+function updateBCC(){
+  var emails=getPaidEmails();
+  document.getElementById('bccCount').textContent=emails.length+' emails ('+MN[new Date().getMonth()]+' paid)';
+  document.getElementById('bccList').textContent=emails.join('; ');
+  var mins=Math.round(emails.length*70/60);
+  document.getElementById('queueNote').textContent=emails.length
+    ? emails.length+' emails · queue time ~'+mins+' min (1 per 70s)'
+    : 'No paid emails for selected groups.';
+}
+
+function toggleBccList(){
+  var el=document.getElementById('bccList');
+  var open=el.classList.toggle('open');
+  document.getElementById('bccToggleBtn').textContent=open?'hide list':'show list';
+}
+
+function copyBCC(){
+  var emails=getPaidEmails();
+  if(!emails.length){sy('No emails');return;}
+  navigator.clipboard.writeText(emails.join('; ')).then(function(){
+    sy('Copied '+emails.length+' BCC emails ✓');setTimeout(function(){sy('');},2500);
+  });
+}
+
+function copyBody(){
+  navigator.clipboard.writeText(document.getElementById('bodyTa').value).then(function(){
+    sy('Body copied ✓');setTimeout(function(){sy('');},2000);
+  });
+}
+
+function openMailto(){
+  var emails=getPaidEmails();
+  if(!emails.length){sy('No emails');return;}
+  var href='mailto:?bcc='+encodeURIComponent(emails.join(','))
+    +'&subject='+encodeURIComponent(document.getElementById('subjInput').value)
+    +'&body='+encodeURIComponent(document.getElementById('bodyTa').value);
+  if(href.length>8000){sy('Too many emails for mailto — use Copy BCC instead');setTimeout(function(){sy('');},3000);return;}
+  window.location.href=href;
+}
+
+function saveQueueState(){
+  if(queueList.length&&queueIdx<queueList.length){
+    sessionStorage.setItem('queueState',JSON.stringify({list:queueList,idx:queueIdx}));
+  }else{
+    sessionStorage.removeItem('queueState');
+  }
+}
+
+function restoreQueueState(){
+  try{
+    var s=JSON.parse(sessionStorage.getItem('queueState')||'null');
+    if(s&&s.list&&s.list.length&&s.idx>0&&s.idx<s.list.length){
+      queueList=s.list; queueIdx=s.idx;
+      document.getElementById('resumeFrom').value=s.idx+1;
+      document.getElementById('btnStart').style.display='none';
+      document.getElementById('btnResume').style.display='inline-block';
+      document.getElementById('progressWrap').style.display='block';
+      document.getElementById('progressBar').style.width=Math.round(s.idx/s.list.length*100)+'%';
+      document.getElementById('queueStatus').textContent=
+        '⚠ Queue interrupted at '+s.idx+'/'+s.list.length+' — click Resume to continue from email #'+(s.idx+1)+'.';
+    }
+  }catch(e){}
+}
+
+function startQueue(){
+  if(queueRunning) return;
+  var emails=getPaidEmails();
+  if(!emails.length){sy('No emails to send');return;}
+  var subj=document.getElementById('subjInput').value.trim();
+  var body=document.getElementById('bodyTa').value.trim();
+  if(!subj||!body){sy('Subject and body required');return;}
+  queueList=emails; queueIdx=0; queueRunning=true; queueStop=false; queueFailed=false;
+  sessionStorage.removeItem('queueState');
+  document.getElementById('progressBar').classList.remove('error');
+  document.getElementById('btnStart').style.display='none';
+  document.getElementById('btnResume').style.display='none';
+  document.getElementById('btnStop').style.display='inline-block';
+  document.getElementById('progressWrap').style.display='block';
+  sendNext();
+}
+
+function stopQueue(){
+  queueStop=true; queueRunning=false;
+  if(queueTimer) clearTimeout(queueTimer);
+  saveQueueState();
+  document.getElementById('btnStop').style.display='none';
+  document.getElementById('btnStart').style.display='none';
+  document.getElementById('btnResume').style.display='inline-block';
+  document.getElementById('queueStatus').textContent='Stopped at '+queueIdx+'/'+queueList.length+' — click Resume to continue.';
+}
+
+function resumeQueue(){
+  if(queueRunning) return;
+  if(!queueList.length){sy('Nothing to resume');return;}
+  var fromVal=parseInt(document.getElementById('resumeFrom').value,10);
+  if(!isNaN(fromVal)&&fromVal>=1&&fromVal<=queueList.length){
+    queueIdx=fromVal-1;
+  }
+  if(queueIdx>=queueList.length){sy('Nothing to resume');return;}
+  var subj=document.getElementById('subjInput').value.trim();
+  var body=document.getElementById('bodyTa').value.trim();
+  if(!subj||!body){sy('Subject and body required');return;}
+  queueFailed=false; queueStop=false; queueRunning=true;
+  document.getElementById('progressBar').classList.remove('error');
+  document.getElementById('btnResume').style.display='none';
+  document.getElementById('btnStart').style.display='none';
+  document.getElementById('btnStop').style.display='inline-block';
+  sendNext();
+}
+
+async function sendNext(){
+  if(queueStop||queueIdx>=queueList.length){
+    if(!queueStop){
+      document.getElementById('queueStatus').textContent='Done! Sent '+queueList.length+' emails ✓';
+      document.getElementById('progressBar').style.width='100%';
+      document.getElementById('progressBar').classList.remove('error');
+      document.getElementById('btnResume').style.display='none';
+      sessionStorage.removeItem('queueState');
+    }
+    queueRunning=false;
+    document.getElementById('btnStart').style.display='inline-block';
+    document.getElementById('btnStop').style.display='none';
+    return;
+  }
+  var email=queueList[queueIdx];
+  var remaining=queueList.length-queueIdx-1;
+  var eta=Math.round(remaining*70/60);
+  document.getElementById('queueStatus').textContent=
+    'Sending '+(queueIdx+1)+'/'+queueList.length+': '+email+(remaining?' — ~'+eta+' min left':'');
+  document.getElementById('progressBar').style.width=Math.round(queueIdx/queueList.length*100)+'%';
+  try{
+    var res=await fetch(PROXY+'?action=send_admin',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        to:email,
+        subject:document.getElementById('subjInput').value.trim(),
+        message:document.getElementById('bodyTa').value.trim()
+      })
+    });
+    var j=await res.json();
+    if(j&&j.error) throw new Error(j.error);
+  }catch(err){
+    queueRunning=false; queueFailed=true;
+    saveQueueState();
+    document.getElementById('progressBar').classList.add('error');
+    document.getElementById('btnStop').style.display='none';
+    document.getElementById('btnStart').style.display='none';
+    document.getElementById('btnResume').style.display='inline-block';
+    document.getElementById('queueStatus').textContent=
+      '⚠ Interrupted at '+(queueIdx+1)+'/'+queueList.length+' ('+email+'): '+(err.message||'network error')+' — click Resume to retry.';
+    return;
+  }
+  queueIdx++;
+  saveQueueState();
+  if(queueIdx<queueList.length){
+    queueTimer=setTimeout(sendNext,70000);
+  }else{
+    sendNext();
+  }
+}
+
+load().then(restoreQueueState);
+</script>
+</body>
+</html>

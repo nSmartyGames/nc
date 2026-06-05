@@ -67,6 +67,10 @@ body{background:#111;color:#ddd;font-family:system-ui,-apple-system,sans-serif;p
 .btn-flag:hover{border-color:#e0a040;color:#e0a040}
 .btn-flag.on{background:#2a1800;color:#f0c040;border-color:#e0a040}
 .flag-ind{font-size:11px;margin-left:4px}
+.parsed-details{padding:10px 14px 12px}
+.pd-row{display:flex;gap:8px;margin-bottom:5px;align-items:baseline}
+.pd-lbl{color:#555;font-size:12px;width:58px;flex-shrink:0}
+.pd-val{color:#bbb;font-size:13px}
 </style>
 </head>
 <body>
@@ -183,7 +187,7 @@ function render(){
       +'<span class="flag-ind" id="fi_'+e.num+'" style="display:'+(e.flagged?'inline':'none')+'">🚩</span>'
       +'</div>'
       +'<div class="card-body-wrap" id="bw_'+e.num+'">'
-      +'<div class="body-text">'+esc(e.body)+'</div>'
+      +buildParsedDetails(e)
       +'</div>'
       +'<div class="card-draft">'
       +'<div class="drow"><label>To:</label><input id="to_'+e.num+'" value="'+esc(e.reply_to||e.from_email)+'"></div>'
@@ -192,9 +196,7 @@ function render(){
       +'<div class="card-actions">'
       +'<button class="btn-send" onclick="sendDraft('+e.num+')">✉ Send</button>'
       +'<button class="btn-skip" onclick="markDone('+e.num+')">✓ Done</button>'
-      +'<button class="btn-update" id="bu_'+e.num+'" onclick="autoUpdate('+e.num+')">↻ Update</button>'
       +'<span class="ok-sent" id="ok_'+e.num+'" style="display:none">Sent ✓</span>'
-      +'<span class="ok-sent" id="upd_'+e.num+'" style="display:none;color:#70c870"></span>'
       +'<button class="btn-add" id="ba_'+e.num+'" onclick="toggleAddForm('+e.num+')">➕ Add</button>'
       +'<div class="flag-group"><span class="flag-lbl">F</span>'
       +'<button class="btn-flag'+(e.flagged?' on':'')+'" id="flag_'+e.num+'" onclick="toggleFlag('+e.num+')">'+(e.flagged?'🚩 Flagged':'🚩 Flag')+'</button>'
@@ -221,9 +223,32 @@ document.addEventListener('input',function(ev){
   saveState();
 });
 
+function buildParsedDetails(e){
+  var p=e.parsed||{}, n=e.num;
+  var name =p.name ||e.from_name ||'';
+  var email=p.email||e.reply_to||e.from_email||'';
+  var updBtn='<div style="margin-top:8px">'
+    +'<button class="btn-update" onclick="autoUpdate('+n+')">↻ Update</button>'
+    +'<span id="upd_'+n+'" style="display:none;color:#70c870;font-size:12px;margin-left:8px"></span>'
+    +'</div>';
+  if(p.is_order){
+    var rows='';
+    rows+='<div class="pd-row"><span class="pd-lbl">Name</span><span class="pd-val">'+esc(name)+'</span></div>';
+    rows+='<div class="pd-row"><span class="pd-lbl">Email</span><span class="pd-val">'+esc(email)+'</span></div>';
+    rows+='<div class="pd-row"><span class="pd-lbl">Curs</span><span class="pd-val">'+(p.course?esc(p.course):'<span style="color:#444">—</span>')+'</span></div>';
+    if(p.group) rows+='<div class="pd-row"><span class="pd-lbl">Grupă</span><span class="pd-val">G'+esc(p.group)+'</span></div>';
+    if(p.nota)  rows+='<div class="pd-row"><span class="pd-lbl">Notă</span><span class="pd-val">'+esc(p.nota)+'</span></div>';
+    return '<div class="parsed-details">'+rows+updBtn+'</div>';
+  }
+  return '<div class="parsed-details">'
+    +'<div class="body-text">'+esc(e.body)+'</div>'
+    +updBtn
+    +'</div>';
+}
+
 function toggleBody(num){
   var el=document.getElementById('bw_'+num);
-  if(el)el.classList.toggle('open');
+  if(el) el.classList.toggle('open');
 }
 
 function markDone(num){
@@ -308,7 +333,7 @@ async function autoUpdate(num){
       payload={name:name,email:email,tax:p.amount||'630',session:p.session||'live',notes:p.nota||''};
     } else if(e.cat==='initiation'){
       action='initiations_append';
-      payload={name:name,email:email,city:'Bucuresti',status:'new',notes:p.nota||''};
+      payload={name:name,email:email,status:'new'};
     } else {
       // Other: try as monthly, only update existing
       if(!p.course){sy('Cannot determine course — check manually');return;}
@@ -361,11 +386,9 @@ function renderAddForm(e){
   } else if(c==='initiation'){
     return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
       +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
-      +'<div class="arow"><label>City</label><input id="acy_'+n+'" value="Bucuresti"></div>'
       +'<div class="arow"><label>Status</label><select id="ast_'+n+'">'
       +'<option value="new">new</option><option value="confirmed">confirmed</option>'
       +'<option value="waitlist">waitlist</option><option value="ineligible">ineligible</option></select></div>'
-      +'<div class="arow"><label>Notes</label><input id="ant_'+n+'" value="'+esc(p.notes||'')+'"></div>'
       +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'initiation\')">+ Add to Initiations</button>';
   }
   return '<p style="color:#555;font-size:12px">Categorize as Monthly / KS26 / Initiation first to enable adding.</p>';
@@ -403,9 +426,7 @@ async function submitAdd(num,cat){
     } else if(cat==='initiation'){
       action='initiations_append';
       payload={name:name,email:email,
-        city:  document.getElementById('acy_'+num).value||'Bucuresti',
-        status:document.getElementById('ast_'+num).value||'new',
-        notes: document.getElementById('ant_'+num).value||''};
+        status:document.getElementById('ast_'+num).value||'new'};
     }
     var res=await fetch(PROXY+'?action='+action,{
       method:'POST',headers:{'Content-Type':'application/json'},

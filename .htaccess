@@ -1,0 +1,6 @@
+Options -Indexes
+RewriteEngine On
+RewriteBase /
+
+RewriteRule ^admin/?$ yoga.html [L]
+RewriteRule ^student/?$ student.html [L]

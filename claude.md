@@ -57,9 +57,8 @@ Courses: YTT-M1 (groups: All,G6,G7), YTT-M2 (groups: All,G4), YTT-M3 (groups: Al
 | name | fld4Lx0LL4sfYOyy7 | singleLineText |
 | note | fld03gdtFjOIkn7wB | multilineText |
 | subscriptions | fldUvZSA5jTlsLQFH | multilineText (JSON) |
-| groups | fldiuM5LoR1KbwzGS | multilineText (JSON) |
 | login_code | fldl4zBz2wxOtsBkR | singleLineText |
-| sessions | fldzXA61F6oOzodW6 | singleLineText |
+| sessions | fldzXA61F6oOzodW6 | multilineText |
 
 #### subscriptions field format (JSON string):
 ```json
@@ -77,11 +76,6 @@ For each student, each course: `curr ← next`, then new `next` determined by ol
 - counter > 1 → `next = letter + (counter - 1)` (decrement)
 - counter = 1 → `next = ''`, clear student note (last prepaid used)
 - anything else → `next = ''`
-
-#### groups field format (JSON string):
-```json
-{"YTT-M1": "G6", "YTT-M2": "G4"}
-```
 
 #### sessions field:
 Comma-separated session IDs, e.g. "YTT-M1-G6,YTT-M1-G7"
