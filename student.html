@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Student Portal</title>
+<title>Login</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px;padding-bottom:70px}
@@ -127,8 +127,8 @@ a:hover{text-decoration:underline}
 <!-- Login Screen -->
 <div class="login-box" id="loginScreen">
   <div class="logo">nicolaecatrina.com</div>
-  <h2>Student Portal</h2>
-  <p>Enter your 5-digit login code</p>
+  <h2>Login</h2>
+  <p>Introduceți codul de 5 cifre<br>Enter your 5-digit login code</p>
   <div class="code-inputs" id="codeInputs">
     <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
     <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
@@ -139,7 +139,7 @@ a:hover{text-decoration:underline}
   <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Login</button>
   <div class="login-msg" id="loginMsg"></div>
   <div class="sendcode-section">
-    <p>Don't have a code?</p>
+    <p>Înregistrați un cod nou prin email:<br>Register a new code with your email:</p>
     <div class="sendcode-row">
       <input type="email" id="loginSendEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')loginSendCode()">
       <button type="button" onclick="loginSendCode()">Send code</button>
@@ -337,8 +337,9 @@ function showDashboard() {
     var currStatus = sub.curr || '';
     var nextStatus = sub.next || '';
     var statusText = currStatus ? statusLabel(currStatus) : '—';
-    var statusClass = 'st-' + (currStatus || '');
-    var isPaid = currStatus === 'P' || currStatus === 'F' || currStatus === 'G';
+    var currLetter = currStatus.replace(/\d+$/, '');
+    var statusClass = 'st-' + currLetter;
+    var isPaid = currLetter === 'P' || currLetter === 'F' || currLetter === 'G';
 
     // Sessions: filter by course+group id, only for paid current month
     var groupId = c.id + '-G' + (sub.G || '');
@@ -411,7 +412,9 @@ function logout() {
 }
 
 function statusLabel(s) {
-  return {P:'Paid',F:'Full',G:'Paid',S:'Stopped'}[s] || (s ? s : 'Not paid');
+  if (!s) return 'Not paid';
+  var letter = s.replace(/\d+$/, '');
+  return {P:'Paid',F:'Full',G:'Paid',S:'Stopped'}[letter] || s;
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function safeId(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }

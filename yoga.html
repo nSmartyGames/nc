@@ -113,6 +113,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   <button type="button" class="nav-btn" onclick="location.href='emails.html'">📧 Emails</button>
+  <button type="button" class="nav-btn" onclick="location.href='send.html'">📤 Send</button>
   <button type="button" class="nav-btn nb-ks26" onclick="location.href='ks26.html'">⛰ KS26</button>
   <button type="button" class="nav-btn nb-trans" id="transBtn" onclick="askTransition()">⚡ Transition</button>
   <button type="button" class="nav-btn nb-yes" id="transYes" onclick="confirmTransition()">✓ Yes</button>
@@ -130,7 +131,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 <div class="bar">
   <div id="vimeoBar" style="display:none">
     <span>Import classes:</span>
-    <input id="vimeoRange" placeholder="50-53">
+    <input id="vimeoRange" placeholder="1-10 or empty=all">
     <button type="button" class="abtn" onclick="vimeoImport()">GO</button>
   </div>
   <span id="sy"></span>
@@ -186,7 +187,7 @@ var PRICES={'YTT-M1':200,'YTT-M2':200,'YTT-M3':220,'I Ching':250,'AL':255};
 var TCOL={F:'#5aa0d0',P:'#7ec850',PEND:'#e0a040',G:'#a07ed0',S:'#e07070','':'#555'};
 var TORD=['F','P','PEND','G','S',''];
 var courses=[], rows=[], sessions=[];
-var activeCourse='YTT-M1', activeGroup='All';
+var activeCourse='YTT-M1', activeGroup='All', expandedCourse=null;
 var sCol=null, sDir=1, dTgt=null, editingId=null, editingPrepaidIdx=null, editingPrepaidSlot=null;
 
 function sy(m){document.getElementById('sy').textContent=m;}
@@ -257,23 +258,26 @@ async function load(){
 function buildCourseHeader(){
   var c=document.getElementById('courseRows');
   c.innerHTML=courses.map(function(co){
-    var btns=(co.groups||['All']).map(function(g){
+    var isExp=expandedCourse===co.id;
+    var btns=isExp?(co.groups||['All']).map(function(g){
       var on=(activeCourse===co.id&&activeGroup===g)?'on':'';
       return '<button class="gbt '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
-    }).join('');
+    }).join(''):'';
     var act=activeCourse===co.id?'active':'';
-    return '<div class="course-row"><span class="cbadge '+act+'" onclick="selectCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>'+btns+'</div>';
+    return '<div class="course-row"><span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>'+btns+'</div>';
   }).join('');
 }
 
-function selectCourse(cid){
+function toggleCourse(cid){
+  if(expandedCourse===cid){expandedCourse=null;buildCourseHeader();return;}
+  expandedCourse=cid;
   activeCourse=cid;
   var co=courses.find(function(x){return x.id===cid;});
   activeGroup=co?co.groups[0]:'All';
   buildCourseHeader();render();updateVimeoBar();
 }
 function selectGroup(cid,g){
-  activeCourse=cid;activeGroup=g;
+  activeCourse=cid;activeGroup=g;expandedCourse=cid;
   buildCourseHeader();render();updateVimeoBar();
 }
 
@@ -455,7 +459,7 @@ function render(){
     var isNumericNota=/^\d+$/.test(notaStr);
     var hasNote=notaStr!==''&&!isNumericNota;
     var rowCls=isStop?' class="row-stop"':hasNote?' class="row-note"':'';
-    return '<tr'+rowCls+'>'+nameCell(r,idx)+'<td style="opacity:.8" title="'+esc(r.email)+'">'+esc(r.email)+'</td><td class="sc">'+badge(idx,'next',sub.next||'')+prepaidBadge(r,idx,activeCourse,'next')+'</td><td class="sc">'+badge(idx,'curr',sub.curr||'')+'</td></tr>';
+    return '<tr'+rowCls+'>'+nameCell(r,idx)+'<td style="opacity:.8" title="'+esc(r.email)+'"><a href="javascript:void(0)" style="color:#d4a017;text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'" onclick="event.stopPropagation();openAsStudent('+idx+')">'+esc(r.email)+'</a></td><td class="sc">'+badge(idx,'next',sub.next||'')+prepaidBadge(r,idx,activeCourse,'next')+'</td><td class="sc">'+badge(idx,'curr',sub.curr||'')+'</td></tr>';
   }).join('');
   if(editingId!==null){var inp=document.getElementById('ni_'+editingId);if(inp)inp.focus();}
   if(editingPrepaidIdx!==null){var pbi=document.getElementById('pbi_'+editingPrepaidIdx);if(pbi)pbi.focus();}
@@ -507,26 +511,30 @@ async function saveAddRow(){
 async function vimeoImport(){
   if(activeGroup==='All')return;
   var range=document.getElementById('vimeoRange').value.trim();
-  var m=range.match(/^(\d+)-(\d+)$/);
-  if(!m){alert('Enter a range like 50-53');return;}
-  var from=parseInt(m[1]),to=parseInt(m[2]);
-  if(from>to||to-from>50){alert('Max 50 classes at a time');return;}
+  var from=0,to=0;
+  if(range){
+    var m=range.match(/^(\d+)-(\d+)$/);
+    if(!m){alert('Enter a range like 50-53, or leave empty for all');return;}
+    from=parseInt(m[1]);to=parseInt(m[2]);
+    if(from>to){alert('Invalid range');return;}
+  }
   var gNum=activeGroup.replace(/^G/,'');
   var groupId=activeCourse+'-G'+gNum;
   sy('Clearing old sessions…');
   try{
     await get('sessions_clear&id='+encodeURIComponent(groupId));
   }catch(e){}
-  sy('Fetching Vimeo videos…');
+  sy('Fetching Vimeo videos for '+activeCourse+'…');
   try{
     var res=await get('vimeo&course='+encodeURIComponent(activeCourse)+'&from='+from+'&to='+to);
     if(res.error){sy('Vimeo error: '+res.error);return;}
     var videos=res.videos||[];
-    if(!videos.length){sy('No videos found');return;}
+    if(!videos.length){sy('No videos found for '+activeCourse);return;}
     var toSave=videos.map(function(v){
+      var pad=String(v.class_num).padStart(2,'0');
       return {
         id:groupId,
-        session:'C-'+v.class_num,
+        session:'C'+pad,
         link:v.link
       };
     });
@@ -671,6 +679,13 @@ async function doTransition(){
     banner.style.display='block';
     setTimeout(function(){banner.style.display='none';},10000);
   }
+}
+
+function openAsStudent(idx){
+  var row=rows[idx];if(!row)return;
+  var sd={fields:{name:row.name,email:row.email,subscriptions:JSON.stringify(row.subscriptions),note:row.note||'',sessions:row.sessions||''}};
+  sessionStorage.setItem('student',JSON.stringify(sd));
+  window.open('student.html','_blank');
 }
 
 function adminLogout(){
