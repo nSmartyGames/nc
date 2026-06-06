@@ -8,9 +8,10 @@ define('IMAP_HOST',  '{mail.nicolaecatrina.com:993/imap/ssl/novalidate-cert}INBO
 define('IMAP_USER',  'contact@nicolaecatrina.com');
 define('IMAP_PASS',  'Ananda69#');
 
-$allowed_origin = 'https://nicolaecatrina.com';
+$allowed_origins = ['https://nicolaecatrina.com', 'https://www.nicolaecatrina.com'];
 $request_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-header('Access-Control-Allow-Origin: ' . $allowed_origin);
+$cors_origin = in_array($request_origin, $allowed_origins) ? $request_origin : $allowed_origins[0];
+header('Access-Control-Allow-Origin: ' . $cors_origin);
 header('Access-Control-Allow-Methods: GET, POST, PATCH, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Block requests from foreign origins (allow empty origin = same-server/curl)
-if ($request_origin && $request_origin !== $allowed_origin) {
+if ($request_origin && !in_array($request_origin, $allowed_origins)) {
     http_response_code(403);
     echo json_encode(['error' => 'Forbidden']);
     exit;
@@ -826,6 +827,21 @@ switch ($action) {
         $line = $name . ',' . $email . ',' . $status . "\n";
         $ok = file_put_contents($csv_file, $line, FILE_APPEND | LOCK_EX);
         echo $ok !== false ? json_encode(['ok' => true]) : json_encode(['error' => 'Write failed']);
+        break;
+
+    case 'ks2026':
+        $f = __DIR__ . '/ks26.csv';
+        if (!file_exists($f)) { echo json_encode(['emails' => []]); break; }
+        $emails = [];
+        if (($fh = fopen($f, 'r')) !== false) {
+            fgetcsv($fh); // skip header
+            while (($row = fgetcsv($fh)) !== false) {
+                $email = strtolower(trim($row[1] ?? ''));
+                if ($email && strpos($email, '@') !== false) $emails[] = $email;
+            }
+            fclose($fh);
+        }
+        echo json_encode(['emails' => array_values(array_unique($emails))]);
         break;
 
     default:
