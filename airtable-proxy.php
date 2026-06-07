@@ -75,7 +75,7 @@ $TBL_SS = 'tblCkiOttKop525yY'; // Sessions
 // Field queries
 $FC = 'fields[]=fldQ7kSY1KZ2bTska&fields[]=fldqdzbMbgMf4fVU4&fields[]=fld4OYOz8TD70oFjP';
 $FS = 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fld03gdtFjOIkn7wB&fields[]=fldUvZSA5jTlsLQFH&fields[]=fldl4zBz2wxOtsBkR&fields[]=fldzXA61F6oOzodW6';
-$FSS = 'fields[]=fldfJXk0duawFD6mR&fields[]=fldgtWrqar4zhAZYJ&fields[]=fldp8IWdYZVQFQlWN';
+$FSS = 'fields[]=fldfJXk0duawFD6mR&fields[]=fldgtWrqar4zhAZYJ&fields[]=fldp8IWdYZVQFQlWN&fields[]=fldTu1RdOGl8wMsBw';
 
 // ── Email parse helper ────────────────────────────────────────────────────────
 function ncParseEmail($subj, $body, $from_name, $from_email, $reply_to, $cat) {
@@ -117,9 +117,61 @@ function ncParseEmail($subj, $body, $from_name, $from_email, $reply_to, $cat) {
         $p['group'] = trim($m[1] ?: $m[2]);
     // Payment confirmation keywords (student manual emails)
     $p['is_payment'] = (bool)preg_match('/am\s*pl[ăa]tit|am\s*achitat|pl[ăa]tit\b|v[aă]\s*mul[tț]umesc.*plat|payment.*confirm/i', $body);
+    // Month detection (Romanian + English)
+    $month_map = [
+        'ianuarie'=>'January','ian'=>'January','january'=>'January',
+        'februarie'=>'February','feb'=>'February','february'=>'February',
+        'martie'=>'March','mar'=>'March','march'=>'March',
+        'aprilie'=>'April','apr'=>'April','april'=>'April',
+        'mai'=>'May','may'=>'May',
+        'iunie'=>'June','iun'=>'June','june'=>'June',
+        'iulie'=>'July','iul'=>'July','july'=>'July',
+        'august'=>'August','aug'=>'August',
+        'septembrie'=>'September','sep'=>'September','sept'=>'September','september'=>'September',
+        'octombrie'=>'October','oct'=>'October','october'=>'October',
+        'noiembrie'=>'November','noi'=>'November','nov'=>'November','november'=>'November',
+        'decembrie'=>'December','dec'=>'December','december'=>'December',
+    ];
+    $p['month'] = '';
+    foreach ($month_map as $pat => $name) {
+        if (preg_match('/\b' . preg_quote($pat, '/') . '\b/i', $t)) { $p['month'] = $name; break; }
+    }
     // KS26 session
     if ($cat === 'ks26' && preg_match('/replay/i', $body)) $p['session'] = 'replay';
     return $p;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Upsert student subscription ──────────────────────────────────────────────
+function ncUpsertSub($em, $nm, $crs, $grp, $sts, $TBL_S) {
+    $em  = strtolower(trim($em));
+    $nm  = trim($nm);
+    $crs = trim($crs);
+    $grp = trim($grp);
+    $sts = trim($sts) ?: 'P';
+    if (!$em || !$crs) return ['ok' => false, 'error' => 'email and course required'];
+    $fsub = 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fldUvZSA5jTlsLQFH';
+    $all  = atAll("$TBL_S?$fsub");
+    $found = null;
+    foreach (($all['records'] ?? []) as $rec) {
+        $f = $rec['fields'] ?? [];
+        if (strtolower(trim($f['email'] ?? '')) === $em) { $found = $rec; break; }
+    }
+    $subs = [];
+    if ($found) $subs = json_decode($found['fields']['subscriptions'] ?? '{}', true) ?: [];
+    if (!isset($subs[$crs])) $subs[$crs] = ['curr' => '', 'next' => ''];
+    $subs[$crs]['next'] = $sts;
+    if ($grp) $subs[$crs]['G'] = $grp;
+    $flds = ['subscriptions' => json_encode($subs)];
+    if (!$found) {
+        $flds['email'] = $em;
+        if ($nm) $flds['name'] = $nm;
+        $r = json_decode(at('POST', $TBL_S, ['fields' => $flds]), true);
+        return ['ok' => true, 'action' => 'created', 'id' => $r['id'] ?? ''];
+    } else {
+        at('PATCH', "$TBL_S/" . $found['id'], ['fields' => $flds]);
+        return ['ok' => true, 'action' => 'updated', 'name' => $found['fields']['name'] ?? $em];
+    }
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -266,8 +318,32 @@ switch ($action) {
             }
         }
         if (!$found) {
-            echo json_encode(array('error' => 'Email not found'));
-            break;
+            // Check ks26.csv for this email before giving up
+            $csv_file = __DIR__ . '/ks26.csv';
+            $csv_name = null;
+            if (file_exists($csv_file) && ($fh = fopen($csv_file, 'r')) !== false) {
+                fgetcsv($fh); // skip header
+                while (($row = fgetcsv($fh)) !== false) {
+                    if (strtolower(trim($row[1] ?? '')) === $email) {
+                        $csv_name = trim($row[0] ?? '');
+                        break;
+                    }
+                }
+                fclose($fh);
+            }
+            if ($csv_name === null) {
+                echo json_encode(array('error' => 'Email not found'));
+                break;
+            }
+            $new = json_decode(at('POST', $TBL_S, array('fields' => array(
+                'email' => $email,
+                'name'  => $csv_name,
+            ))), true);
+            if (isset($new['error'])) {
+                echo json_encode(array('error' => 'Failed to create student'));
+                break;
+            }
+            $found = $new;
         }
         // Generate code and save
         $code = str_pad(mt_rand(0, 99999), 5, '0', STR_PAD_LEFT);
@@ -434,10 +510,16 @@ switch ($action) {
         break;
 
     // Delete all sessions for a given group id (e.g. YTT-M1-G6)
+    // Optional ?email=x to delete only private sessions for that email; omit to delete only public (no-email) records
     case 'sessions_clear':
-        $groupId = isset($_GET['id']) ? $_GET['id'] : '';
+        $groupId   = isset($_GET['id'])    ? $_GET['id']             : '';
+        $emailClear = isset($_GET['email']) ? trim($_GET['email'])    : '';
         if (!$groupId) { echo json_encode(array('error' => 'Missing id')); break; }
-        $formula = urlencode("{id}='" . str_replace("'", "\\'", $groupId) . "'");
+        $safeGid  = str_replace("'", "\\'", $groupId);
+        $safeEml  = str_replace("'", "\\'", $emailClear);
+        // email param present → clear only that subscriber's private records
+        // email param absent  → clear only public (no-email) group records
+        $formula  = urlencode("AND({id}='$safeGid',{email}='$safeEml')");
         $existing = json_decode(at('GET', "$TBL_SS?filterByFormula=$formula&fields[]=fldfJXk0duawFD6mR"), true);
         $records = $existing['records'] ?? [];
         $deleted = 0;
@@ -455,11 +537,15 @@ switch ($action) {
         if (!$sessions) { echo json_encode(array('error' => 'No sessions provided')); break; }
         $count = 0;
         foreach ($sessions as $sess) {
-            $sid     = $sess['id']      ?? '';
-            $session = $sess['session'] ?? '';
+            $sid       = $sess['id']      ?? '';
+            $session   = $sess['session'] ?? '';
+            $emailVal  = isset($sess['email']) ? trim($sess['email']) : '';
             if (!$sid || !$session) continue;
-            // id is course+group (e.g. YTT-M1-G6), session is class (e.g. C-109) — both needed to find unique record
-            $formula  = urlencode("AND({id}='" . str_replace("'", "\\'", $sid) . "',{session}='" . str_replace("'", "\\'", $session) . "')");
+            $safeId    = str_replace("'", "\\'", $sid);
+            $safeSess  = str_replace("'", "\\'", $session);
+            $safeEmail = str_replace("'", "\\'", $emailVal);
+            // id + session + email together identify a unique record (private vs public)
+            $formula  = urlencode("AND({id}='$safeId',{session}='$safeSess',{email}='$safeEmail')");
             $existing = json_decode(at('GET', "$TBL_SS?filterByFormula=$formula&maxRecords=1"), true);
             $recId    = $existing['records'][0]['id'] ?? null;
             $fields   = array(
@@ -467,6 +553,7 @@ switch ($action) {
                 'session' => $sess['session'] ?? '',
                 'link'    => $sess['link']    ?? ''
             );
+            if ($emailVal) $fields['email'] = $emailVal;
             if ($recId) {
                 at('PATCH', "$TBL_SS/$recId", array('fields' => $fields));
             } else {
@@ -656,10 +743,24 @@ switch ($action) {
                 $cat = preg_match('/ks\s*26|kashmir/i', $tx) ? 'ks26' : 'monthly';
                 $parsed['cat'] = $cat;
             }
+            // Auto-upsert when all required payment fields are present
+            $auto_action = null;
+            if (($parsed['is_payment'] || $parsed['is_order'])
+                && !empty($parsed['email']) && filter_var($parsed['email'], FILTER_VALIDATE_EMAIL)
+                && !empty($parsed['course'])
+                && !empty($parsed['group'])
+                && !empty($parsed['month'])
+            ) {
+                $auto_action = ncUpsertSub($parsed['email'], $parsed['name'], $parsed['course'], $parsed['group'], $parsed['status'] ?? 'P', $TBL_S);
+                if (!empty($auto_action['ok'])) {
+                    imap_setflag_full($mbox, (string)$num, '\\Seen');
+                    continue;
+                }
+            }
             $cats[$cat][] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe, 'reply_to' => $re,
                              'subject' => $subj, 'date' => $dstr, 'seen' => $seen, 'body' => $btxt,
                              'draft' => ncMakeDraft($cat, $fn, $re, $subj, $btxt), 'cat' => $cat,
-                             'parsed' => $parsed];
+                             'parsed' => $parsed, 'auto_action' => $auto_action];
             if ($mark_rd && !$seen) imap_setflag_full($mbox, (string)$num, '\\Seen');
         }
         imap_close($mbox);
@@ -701,39 +802,13 @@ switch ($action) {
         break;
 
     case 'upsert_sub':
-        $em  = strtolower(trim($body['email']  ?? ''));
-        $nm  = trim($body['name']   ?? '');
-        $crs = trim($body['course'] ?? '');
-        $grp = trim($body['group']  ?? '');
-        $sts = trim($body['status'] ?? 'P');
-        if (!$em || !$crs) { echo json_encode(['error' => 'email and course required']); break; }
-        $create_new = $body['create_if_new'] ?? true;
-        $fsub = 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fldUvZSA5jTlsLQFH';
-        $all  = atAll("$TBL_S?$fsub");
-        $found = null;
-        foreach (($all['records'] ?? []) as $rec) {
-            $f = $rec['fields'] ?? [];
-            if (strtolower(trim($f['email'] ?? '')) === $em) { $found = $rec; break; }
-        }
-        if (!$found && !$create_new) {
-            echo json_encode(['ok' => false, 'action' => 'not_found', 'email' => $em]);
-            break;
-        }
-        $subs = [];
-        if ($found) $subs = json_decode($found['fields']['subscriptions'] ?? '{}', true) ?: [];
-        if (!isset($subs[$crs])) $subs[$crs] = ['curr' => '', 'next' => ''];
-        $subs[$crs]['next'] = $sts;
-        if ($grp) $subs[$crs]['G'] = $grp;
-        $flds = ['subscriptions' => json_encode($subs)];
-        if (!$found) {
-            $flds['email'] = $em;
-            if ($nm) $flds['name'] = $nm;
-            $r = json_decode(at('POST', $TBL_S, ['fields' => $flds]), true);
-            echo json_encode(['ok' => true, 'action' => 'created', 'id' => $r['id'] ?? '']);
-        } else {
-            at('PATCH', "$TBL_S/" . $found['id'], ['fields' => $flds]);
-            echo json_encode(['ok' => true, 'action' => 'updated', 'name' => $found['fields']['name'] ?? $em]);
-        }
+        $em  = $body['email']  ?? '';
+        $nm  = $body['name']   ?? '';
+        $crs = $body['course'] ?? '';
+        $grp = $body['group']  ?? '';
+        $sts = $body['status'] ?? 'P';
+        $result = ncUpsertSub($em, $nm, $crs, $grp, $sts, $TBL_S);
+        echo json_encode($result);
         break;
 
     case 'ks26_upsert':
@@ -831,17 +906,21 @@ switch ($action) {
 
     case 'ks2026':
         $f = __DIR__ . '/ks26.csv';
-        if (!file_exists($f)) { echo json_encode(['emails' => []]); break; }
-        $emails = [];
+        if (!file_exists($f)) { echo json_encode(['enrollments' => new stdClass()]); break; }
+        $enrollments = [];
         if (($fh = fopen($f, 'r')) !== false) {
             fgetcsv($fh); // skip header
             while (($row = fgetcsv($fh)) !== false) {
                 $email = strtolower(trim($row[1] ?? ''));
-                if ($email && strpos($email, '@') !== false) $emails[] = $email;
+                $sess  = strtolower(trim($row[3] ?? 'live')) ?: 'live';
+                if ($email && strpos($email, '@') !== false) {
+                    if (!isset($enrollments[$email])) $enrollments[$email] = [];
+                    if (!in_array($sess, $enrollments[$email])) $enrollments[$email][] = $sess;
+                }
             }
             fclose($fh);
         }
-        echo json_encode(['emails' => array_values(array_unique($emails))]);
+        echo json_encode(['enrollments' => $enrollments ?: new stdClass()]);
         break;
 
     default:

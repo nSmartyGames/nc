@@ -102,6 +102,8 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 .popup-close{position:absolute;top:8px;right:10px;z-index:10;background:#3a3a3a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:4px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit}
 .popup-close:hover{background:#555;border-color:#d4a017}
 .popup-frame{width:100%;height:100%;border:none;display:block}
+.ks-badge{background:#0d2040!important;border-color:#2a5a9a!important;color:#5ab0e0!important}
+.ks-badge:hover{border-color:#5ab0e0!important;background:#162c50!important}
 </style>
 </head>
 <body>
@@ -132,7 +134,9 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
   <div id="vimeoBar" style="display:none">
     <span>Import classes:</span>
     <input id="vimeoRange" placeholder="1-10 or empty=all">
-    <button type="button" class="abtn" onclick="vimeoImport()">GO</button>
+    <button type="button" class="abtn" onclick="vimeoImport('group')">Save for Group</button>
+    <input id="vimeoEmail" placeholder="Subscriber email (optional)" style="width:200px;background:#fff8e8;border:1px solid #b87800;border-radius:5px;color:#1a1a1a;font-size:14px;padding:4px 8px;outline:none;font-family:inherit">
+    <button type="button" class="abtn" onclick="vimeoImport('subscriber')">Save for Subscriber</button>
   </div>
   <span id="sy"></span>
 </div>
@@ -246,7 +250,7 @@ async function load(){
     var sesr=await get('sessions');
     sessions=(sesr.records||[]).map(function(r){
       var f=r.fields||{};
-      return {id:f.id||'',session:f.session||'',link:f.link||''};
+      return {id:f.id||'',session:f.session||'',link:f.link||'',email:(f.email||'').toLowerCase()};
     });
   }catch(e){sessions=[];}
   sy('');
@@ -257,15 +261,20 @@ async function load(){
 
 function buildCourseHeader(){
   var c=document.getElementById('courseRows');
-  c.innerHTML=courses.map(function(co){
-    var isExp=expandedCourse===co.id;
-    var btns=isExp?(co.groups||['All']).map(function(g){
+  var badges=courses.map(function(co){
+    var act=activeCourse===co.id?'active':'';
+    return '<span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>';
+  }).join('');
+  badges+='<span class="cbadge ks-badge" onclick="location.href=\'ks26.html\'">KS2026<span class="tip">Kashmir Shaivism Retreat 2026</span></span>';
+  var groups='';
+  if(expandedCourse){
+    var co=courses.find(function(x){return x.id===expandedCourse;});
+    if(co) groups=(co.groups||['All']).map(function(g){
       var on=(activeCourse===co.id&&activeGroup===g)?'on':'';
       return '<button class="gbt '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
-    }).join(''):'';
-    var act=activeCourse===co.id?'active':'';
-    return '<div class="course-row"><span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>'+btns+'</div>';
-  }).join('');
+    }).join('');
+  }
+  c.innerHTML='<div class="course-row">'+badges+'</div>'+(groups?'<div class="course-row">'+groups+'</div>':'');
 }
 
 function toggleCourse(cid){
@@ -302,7 +311,8 @@ function renderSessions(){
   if(!filtered.length){panel.style.display='none';return;}
   panel.style.display='flex';
   panel.innerHTML=filtered.map(function(s){
-    return '<a class="sess-chip" href="'+esc(s.link)+'" target="_blank">'+esc(s.session)+'</a>';
+    var label=esc(s.session)+(s.email?' ['+esc(s.email.split('@')[0])+']':'');
+    return '<a class="sess-chip" href="'+esc(s.link)+'" target="_blank">'+label+'</a>';
   }).join('');
 }
 
@@ -508,9 +518,11 @@ async function saveAddRow(){
   }catch(e){sy('Create error');}
 }
 
-async function vimeoImport(){
+async function vimeoImport(mode){
   if(activeGroup==='All')return;
   var range=document.getElementById('vimeoRange').value.trim();
+  var email=(document.getElementById('vimeoEmail').value||'').trim().toLowerCase();
+  if(mode==='subscriber'&&!email){alert('Enter subscriber email');return;}
   var from=0,to=0;
   if(range){
     var m=range.match(/^(\d+)-(\d+)$/);
@@ -520,10 +532,13 @@ async function vimeoImport(){
   }
   var gNum=activeGroup.replace(/^G/,'');
   var groupId=activeCourse+'-G'+gNum;
-  sy('Clearing old sessions…');
-  try{
-    await get('sessions_clear&id='+encodeURIComponent(groupId));
-  }catch(e){}
+  if(mode==='group'){
+    sy('Clearing old group sessions…');
+    try{await get('sessions_clear&id='+encodeURIComponent(groupId));}catch(e){}
+  } else {
+    sy('Clearing old private sessions for '+email+'…');
+    try{await get('sessions_clear&id='+encodeURIComponent(groupId)+'&email='+encodeURIComponent(email));}catch(e){}
+  }
   sy('Fetching Vimeo videos for '+activeCourse+'…');
   try{
     var res=await get('vimeo&course='+encodeURIComponent(activeCourse)+'&from='+from+'&to='+to);
@@ -532,18 +547,16 @@ async function vimeoImport(){
     if(!videos.length){sy('No videos found for '+activeCourse);return;}
     var toSave=videos.map(function(v){
       var pad=String(v.class_num).padStart(2,'0');
-      return {
-        id:groupId,
-        session:'C'+pad,
-        link:v.link
-      };
+      var rec={id:groupId,session:'C'+pad,link:v.link};
+      if(mode==='subscriber') rec.email=email;
+      return rec;
     });
     sy('Saving '+toSave.length+' session links…');
     var r=await post('sessions_upsert',null,{sessions:toSave});
     if(r.ok){
       sy('Saved '+r.count+' sessions ✓');
       var sesr=await get('sessions');
-      sessions=(sesr.records||[]).map(function(r){var f=r.fields||{};return {id:f.id||'',session:f.session||'',link:f.link||''};});
+      sessions=(sesr.records||[]).map(function(r){var f=r.fields||{};return {id:f.id||'',session:f.session||'',link:f.link||'',email:(f.email||'').toLowerCase()};});
       renderSessions();
       setTimeout(function(){sy('');},2000);
     } else {

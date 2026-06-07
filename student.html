@@ -120,6 +120,8 @@ a:hover{text-decoration:underline}
 .popup-close{position:absolute;top:8px;right:10px;z-index:10;background:#3a3a3a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:4px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit}
 .popup-close:hover{background:#555;border-color:#d4a017}
 .popup-frame{width:100%;height:100%;border:none;display:block}
+.ks-join-link{display:inline-block;font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:12px;padding:3px 12px;text-decoration:none;font-weight:600}
+.ks-join-link:hover{background:#1e2a3a;text-decoration:none}
 </style>
 </head>
 <body>
@@ -203,6 +205,7 @@ var PROXY = /^\/app(\/|$)/.test(location.pathname)
 var student = null;
 var courses = [];
 var sessions = [];
+var ks2026Enrollments = {};
 
 // Code input handling
 var inputs = document.querySelectorAll('#codeInputs input');
@@ -284,6 +287,7 @@ async function doLogin() {
       }
       student = res.student;
       sessionStorage.setItem('student', JSON.stringify(student));
+      sessionStorage.setItem('loginCode', code);
       await loadCourseData();
       showDashboard();
     } else {
@@ -304,9 +308,13 @@ async function loadCourseData() {
     var sr = await fetch(PROXY + '?action=sessions').then(function(r){return r.json();});
     sessions = (sr.records || []).map(function(r){
       var f = r.fields || {};
-      return {id: f.id || '', session: f.session || '', link: f.link || ''};
+      return {id: f.id || '', session: f.session || '', link: f.link || '', email: (f.email || '').toLowerCase()};
     });
   } catch(e) { sessions = []; }
+  try {
+    var kr = await fetch(PROXY + '?action=ks2026').then(function(r){return r.json();});
+    ks2026Enrollments = kr.enrollments || {};
+  } catch(e) { ks2026Enrollments = {}; }
 }
 
 function showDashboard() {
@@ -329,10 +337,46 @@ function showDashboard() {
   var currMonth = MN[mo];
   var nextMonth = MN[(mo+1)%12];
 
-  var html = '';
+  var studentEmail = (f.email || '').toLowerCase();
+  var ksSessions = ks2026Enrollments[studentEmail] || [];
+  var isKsEnrolled = ksSessions.length > 0;
+  var hasLive   = ksSessions.indexOf('live')   >= 0;
+  var hasReplay = ksSessions.indexOf('replay') >= 0;
+  var ksTypeLabel = (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
+  var ksCard = '<div class="sub-card">';
+  ksCard += '<div class="sub-header"' + (isKsEnrolled ? ' onclick="toggleSub(this)"' : '') + '>';
+  ksCard += '<div class="sub-title">';
+  if (isKsEnrolled) {
+    ksCard += '<span class="sub-badge" style="background:#0d2040;border-color:#2a6a9a;color:#5ab0e0">KS2026</span>';
+    ksCard += '<span class="sub-label">Kashmir Shaivism Retreat - ' + ksTypeLabel + '</span>';
+  } else {
+    ksCard += '<span class="sub-badge" style="background:#1e1e1e;border-color:#333;color:#555">KS2026</span>';
+    ksCard += '<span class="sub-label" style="color:#666">Kashmir Shaivism Retreat - live/replay</span>';
+  }
+  ksCard += '</div><div style="display:flex;align-items:center;gap:10px">';
+  if (isKsEnrolled) {
+    if (hasLive)   ksCard += '<span class="sub-status" style="background:#1e3a1e;color:#7ec850;border:1px solid #3a7a3a">Live</span>';
+    if (hasReplay) ksCard += '<span class="sub-status" style="background:#1e2040;color:#5ab0e0;border:1px solid #2a6a9a">Replay</span>';
+    ksCard += '<span class="chevron">▶</span>';
+  } else {
+    ksCard += '<a href="https://nicolaecatrina.com/kashmir-shaivism-retreat-2026/" target="_blank" class="ks-join-link" onclick="event.stopPropagation()">Vreau sa particip!</a>';
+  }
+  ksCard += '</div></div>';
+  if (isKsEnrolled) {
+    ksCard += '<div class="sub-body">';
+    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Sunteti inscris - incepand cu 25 iunie, 14:00 CEST.</div>';
+    if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">🔴 <strong style="color:#ccc">Live</strong>: participare in timp real la tabara.</div>';
+    if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">📼 <strong style="color:#ccc">Replay</strong>: acces la inregistrarile taberei dupa finalizare.</div>';
+    ksCard += '<div style="font-size:12px;color:#888;margin-top:8px">Va fi afisat aici un link de acces la tabara inainte de inceperea ei.</div>';
+    ksCard += '</div>';
+  }
+  ksCard += '</div>';
+  var html = ksCard;
+  var hasCourseSubs = false;
   courses.forEach(function(c) {
     var sub = subs[c.id];
     if (!sub) return;
+    hasCourseSubs = true;
 
     var currStatus = sub.curr || '';
     var nextStatus = sub.next || '';
@@ -343,9 +387,23 @@ function showDashboard() {
 
     // Sessions: filter by course+group id, only for paid current month
     var groupId = c.id + '-G' + (sub.G || '');
-    var courseSessions = (isPaid && sub.G)
-      ? sessions.filter(function(s) { return s.id === groupId; })
-      : [];
+    var courseSessions = [];
+    if (isPaid && sub.G) {
+      var allGroupSess = sessions.filter(function(s){ return s.id === groupId; });
+      // Build private override map for this student's email
+      var privateMap = {};
+      allGroupSess.forEach(function(s){
+        if(s.email && s.email === studentEmail) privateMap[s.session] = true;
+      });
+      // Private sessions for this student + public sessions not overridden by a private one
+      allGroupSess.forEach(function(s){
+        if(!s.email) {
+          if(!privateMap[s.session]) courseSessions.push(s);
+        } else if(s.email === studentEmail) {
+          courseSessions.push(s);
+        }
+      });
+    }
     courseSessions.sort(function(a, b) {
       var na = parseInt((a.session || '').replace(/\D/g,'')) || 0;
       var nb = parseInt((b.session || '').replace(/\D/g,'')) || 0;
@@ -383,7 +441,7 @@ function showDashboard() {
     html += '</div>';
   });
 
-  if (!html) html = '<div class="no-sessions" style="text-align:center;padding:30px">No active subscriptions found</div>';
+  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">No active subscriptions found</div>';
   document.getElementById('subsList').innerHTML = html;
 }
 
@@ -403,6 +461,7 @@ function toggleSub(el) {
 function logout() {
   student = null;
   sessionStorage.removeItem('student');
+  sessionStorage.removeItem('loginCode');
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'block';
   document.querySelector('.bottom-bar').style.display = 'flex';
@@ -524,9 +583,28 @@ async function sendContactEmail() {
 // Auto-login if session exists
 (function(){
   try {
-    var s = sessionStorage.getItem('student');
-    if (s) {
-      student = JSON.parse(s);
+    var code = sessionStorage.getItem('loginCode');
+    var cached = sessionStorage.getItem('student');
+    if (!code && !cached) return;
+    if (cached) { student = JSON.parse(cached); }
+    if (code) {
+      fetch(PROXY + '?action=login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({code: code})
+      }).then(function(r){ return r.json(); }).then(function(res) {
+        if (res.ok && res.student && !res.isAdmin) {
+          student = res.student;
+          sessionStorage.setItem('student', JSON.stringify(student));
+        } else {
+          sessionStorage.removeItem('loginCode');
+          sessionStorage.removeItem('student');
+          return;
+        }
+        return loadCourseData().then(showDashboard);
+      }).catch(function() {
+        if (student) loadCourseData().then(showDashboard);
+      });
+    } else {
       loadCourseData().then(showDashboard);
     }
   } catch(e) {}
