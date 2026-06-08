@@ -10,31 +10,6 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
 a{color:#5aa0d0;text-decoration:none}
 a:hover{text-decoration:underline}
 
-/* Login screen */
-.login-box{background:#242424;border:1px solid #3a3a3a;border-radius:12px;padding:30px;width:100%;max-width:380px;margin-top:60px;text-align:center}
-.login-box h2{font-size:18px;color:#f0c030;margin-bottom:6px}
-.login-box p{font-size:12px;color:#888;margin-bottom:20px}
-.login-box .logo{font-size:25px;font-weight:700;color:#f0c030;margin-bottom:14px;letter-spacing:.5px}
-.code-inputs{display:flex;gap:8px;justify-content:center;margin-bottom:16px}
-.code-inputs input{width:44px;height:52px;background:#1a1a1a;border:2px solid #3a3a3a;border-radius:8px;color:#f0c030;font-size:22px;font-weight:700;text-align:center;outline:none;font-family:inherit}
-.code-inputs input:focus{border-color:#d4a017}
-.login-btn{width:100%;background:#3a2e00;color:#f0c030;border:1px solid #d4a017;border-radius:8px;padding:10px;font-size:14px;cursor:pointer;font-weight:600;margin-bottom:12px}
-.login-btn:hover{background:#4a3e00}
-.login-btn:disabled{opacity:.5;cursor:not-allowed}
-.send-link{font-size:12px;color:#5aa0d0;cursor:pointer;background:none;border:none;text-decoration:underline}
-.send-link:hover{color:#7ac0f0}
-.login-msg{font-size:11px;margin-top:10px;min-height:16px}
-.msg-ok{color:#7ec850}
-.msg-err{color:#e07070}
-
-/* Fixed bottom email bar */
-.bottom-bar{position:fixed;bottom:0;left:0;right:0;background:#1e1e1e;border-top:1px solid #333;padding:10px 20px;display:flex;gap:8px;align-items:center;z-index:500}
-.bottom-bar input{flex:1;background:#111;border:1px solid #3a3a3a;border-radius:6px;color:#d4a017;font-size:13px;padding:8px 10px;outline:none;font-family:inherit;max-width:320px}
-.bottom-bar input:focus{border-color:#d4a017}
-.bottom-bar input::placeholder{color:#555}
-.bottom-bar button{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
-.bottom-bar button:hover{border-color:#d4a017}
-.bottom-bar .bar-msg{font-size:11px;color:#888}
 
 /* Dashboard */
 .dashboard{width:100%;max-width:600px}
@@ -95,16 +70,6 @@ a:hover{text-decoration:underline}
 .contact-send:disabled{opacity:.5;cursor:not-allowed}
 .contact-msg{font-size:11px;flex:1}
 
-/* Send code section in login box */
-.sendcode-section{margin-top:16px;border-top:1px solid #2a2a2a;padding-top:14px}
-.sendcode-section p{font-size:11px;color:#666;margin-bottom:8px}
-.sendcode-row{display:flex;gap:6px}
-.sendcode-row input{flex:1;background:#111;border:1px solid #3a3a3a;border-radius:6px;color:#d4a017;font-size:12px;padding:7px 9px;outline:none;font-family:inherit}
-.sendcode-row input:focus{border-color:#d4a017}
-.sendcode-row input::placeholder{color:#555}
-.sendcode-row button{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:7px 12px;font-size:11px;cursor:pointer;font-family:inherit;white-space:nowrap}
-.sendcode-row button:hover{border-color:#d4a017}
-.sendcode-msg{font-size:11px;margin-top:6px;min-height:14px}
 
 /* Nav bar */
 .nav-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:14px}
@@ -126,29 +91,6 @@ a:hover{text-decoration:underline}
 </head>
 <body>
 
-<!-- Login Screen -->
-<div class="login-box" id="loginScreen">
-  <div class="logo">nicolaecatrina.com</div>
-  <h2>Login</h2>
-  <p>Introduceți codul de 5 cifre<br>Enter your 5-digit login code</p>
-  <div class="code-inputs" id="codeInputs">
-    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
-    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
-    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
-    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
-    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
-  </div>
-  <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Login</button>
-  <div class="login-msg" id="loginMsg"></div>
-  <div class="sendcode-section">
-    <p>Înregistrați un cod nou prin email:<br>Register a new code with your email:</p>
-    <div class="sendcode-row">
-      <input type="email" id="loginSendEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')loginSendCode()">
-      <button type="button" onclick="loginSendCode()">Send code</button>
-    </div>
-    <div class="sendcode-msg" id="loginSendMsg"></div>
-  </div>
-</div>
 
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard" style="display:none">
@@ -167,12 +109,6 @@ a:hover{text-decoration:underline}
   <div id="subsList"></div>
 </div>
 
-<!-- Fixed bottom email bar -->
-<div class="bottom-bar">
-  <input type="email" id="barEmail" placeholder="your@email.com — get login code" onkeydown="if(event.key==='Enter')sendCode()">
-  <button type="button" onclick="sendCode()">Send me a code</button>
-  <span class="bar-msg" id="barMsg"></span>
-</div>
 
 <!-- Contact bar (logged in) -->
 <div class="contact-bar" id="contactBar">
@@ -207,94 +143,8 @@ var courses = [];
 var sessions = [];
 var ks2026Enrollments = {};
 
-// Code input handling
-var inputs = document.querySelectorAll('#codeInputs input');
-inputs.forEach(function(inp, i) {
-  inp.addEventListener('input', function() {
-    if (inp.value.length === 1 && i < 4) inputs[i+1].focus();
-    checkCode();
-  });
-  inp.addEventListener('keydown', function(e) {
-    if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i-1].focus(); }
-    if (e.key === 'Enter') doLogin();
-  });
-  inp.addEventListener('paste', function(e) {
-    e.preventDefault();
-    var txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').substring(0,5);
-    for (var j = 0; j < 5; j++) { inputs[j].value = txt[j] || ''; }
-    if (txt.length === 5) inputs[4].focus();
-    checkCode();
-  });
-});
+var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
 
-function getCode() {
-  var c = '';
-  inputs.forEach(function(i){ c += i.value; });
-  return c;
-}
-function checkCode() {
-  document.getElementById('loginBtn').disabled = getCode().length !== 5;
-}
-
-function msg(text, ok) {
-  var m = document.getElementById('loginMsg');
-  m.textContent = text;
-  m.className = 'login-msg ' + (ok ? 'msg-ok' : 'msg-err');
-}
-
-function toggleEmailBox() {
-  var eb = document.getElementById('emailBox');
-  eb.style.display = eb.style.display === 'none' ? 'block' : 'none';
-}
-
-function barMsg(text, ok) {
-  var m = document.getElementById('barMsg');
-  m.textContent = text;
-  m.style.color = ok ? '#7ec850' : '#e07070';
-}
-async function sendCode() {
-  var email = document.getElementById('barEmail').value.trim();
-  if (!email) { barMsg('Enter your email', false); return; }
-  barMsg('Sending…', true);
-  try {
-    var res = await fetch(PROXY + '?action=sendcode', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: email})
-    }).then(function(r){return r.json();});
-    if (res.ok) {
-      barMsg('Code sent! Check your inbox.', true);
-      document.getElementById('barEmail').value = '';
-    } else {
-      barMsg(res.error || 'Failed to send code', false);
-    }
-  } catch(e) { barMsg('Network error', false); }
-}
-
-async function doLogin() {
-  var code = getCode();
-  if (code.length !== 5) return;
-  msg('Logging in…', true);
-  try {
-    var res = await fetch(PROXY + '?action=login', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({code: code})
-    }).then(function(r){return r.json();});
-    if (res.ok && res.student) {
-      if (res.isAdmin) {
-        sessionStorage.setItem('adminAuth', '1');
-        window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/yoga.html' : '/yoga.html';
-        return;
-      }
-      student = res.student;
-      sessionStorage.setItem('student', JSON.stringify(student));
-      sessionStorage.setItem('loginCode', code);
-      await loadCourseData();
-      showDashboard();
-    } else {
-      msg(res.error || 'Invalid code', false);
-    }
-  } catch(e) { msg('Network error', false); }
-}
 
 async function loadCourseData() {
   try {
@@ -318,9 +168,7 @@ async function loadCourseData() {
 }
 
 function showDashboard() {
-  document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  document.querySelector('.bottom-bar').style.display = 'none';
   document.getElementById('contactBar').style.display = 'block';
 
   var f = student.fields || {};
@@ -367,7 +215,7 @@ function showDashboard() {
     ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Sunteti inscris - incepand cu 25 iunie, 14:00 CEST.</div>';
     if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">🔴 <strong style="color:#ccc">Live</strong>: participare in timp real la tabara.</div>';
     if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">📼 <strong style="color:#ccc">Replay</strong>: acces la inregistrarile taberei dupa finalizare.</div>';
-    ksCard += '<div style="font-size:12px;color:#888;margin-top:8px">Va fi afisat aici un link de acces la tabara inainte de inceperea ei.</div>';
+
     ksCard += '</div>';
   }
   ksCard += '</div>';
@@ -462,12 +310,7 @@ function logout() {
   student = null;
   sessionStorage.removeItem('student');
   sessionStorage.removeItem('loginCode');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'block';
-  document.querySelector('.bottom-bar').style.display = 'flex';
-  document.getElementById('contactBar').style.display = 'none';
-  inputs.forEach(function(i){ i.value = ''; });
-  msg('', true);
+  window.location.href = BASE + 'login.html';
 }
 
 function statusLabel(s) {
@@ -523,24 +366,6 @@ function handleOverlayClick(e) {
   if (e.target === document.getElementById('popupOverlay')) closePopup();
 }
 
-async function loginSendCode() {
-  var email = document.getElementById('loginSendEmail').value.trim();
-  var msgEl = document.getElementById('loginSendMsg');
-  if (!email) { msgEl.textContent = 'Enter your email'; msgEl.style.color = '#e07070'; return; }
-  msgEl.textContent = 'Sending…'; msgEl.style.color = '#888';
-  try {
-    var res = await fetch(PROXY + '?action=sendcode', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: email})
-    }).then(function(r){return r.json();});
-    if (res.ok) {
-      msgEl.textContent = 'Code sent! Check your inbox.'; msgEl.style.color = '#7ec850';
-      document.getElementById('loginSendEmail').value = '';
-    } else {
-      msgEl.textContent = res.error || 'Failed to send code'; msgEl.style.color = '#e07070';
-    }
-  } catch(e) { msgEl.textContent = 'Network error'; msgEl.style.color = '#e07070'; }
-}
 
 function toggleContactBar() {
   var form = document.getElementById('contactForm');
@@ -580,13 +405,12 @@ async function sendContactEmail() {
   btn.disabled = false;
 }
 
-// Auto-login if session exists
 (function(){
   try {
-    var code = sessionStorage.getItem('loginCode');
     var cached = sessionStorage.getItem('student');
-    if (!code && !cached) return;
-    if (cached) { student = JSON.parse(cached); }
+    if (!cached) { window.location.href = BASE + 'login.html'; return; }
+    student = JSON.parse(cached);
+    var code = sessionStorage.getItem('loginCode');
     if (code) {
       fetch(PROXY + '?action=login', {
         method: 'POST', headers: {'Content-Type':'application/json'},
@@ -595,19 +419,19 @@ async function sendContactEmail() {
         if (res.ok && res.student && !res.isAdmin) {
           student = res.student;
           sessionStorage.setItem('student', JSON.stringify(student));
+          return loadCourseData().then(showDashboard);
         } else {
           sessionStorage.removeItem('loginCode');
           sessionStorage.removeItem('student');
-          return;
+          window.location.href = BASE + 'login.html';
         }
-        return loadCourseData().then(showDashboard);
       }).catch(function() {
         if (student) loadCourseData().then(showDashboard);
       });
     } else {
       loadCourseData().then(showDashboard);
     }
-  } catch(e) {}
+  } catch(e) { window.location.href = BASE + 'login.html'; }
 })();
 </script>
 </body>

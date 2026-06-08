@@ -26,9 +26,11 @@ th{color:#5ab0e0;padding:8px 10px;text-align:left;font-size:12px;font-weight:600
 td{padding:7px 10px;border-bottom:1px solid #0d1e30;vertical-align:middle}
 tbody tr:hover td{background:#0d1e30}
 .tx{display:inline-block;padding:2px 9px;border-radius:4px;font-size:12px;font-weight:700}
+.tx-840{background:#0f2a1a;color:#5ec87a}
+.tx-1050{background:#1a2a0f;color:#a0c850}
 .tx-630{background:#122a12;color:#7ec850}
+.tx-505{background:#122218;color:#60b870}
 .tx-G{background:#1a1230;color:#a07ed0}
-.tx-Gq{background:#12122a;color:#7060b0}
 .tx-P{background:#2a1e00;color:#e0a040}
 .tx-e{color:#333;font-size:12px}
 .note-cell{color:#4a7a8a;font-size:12px}
@@ -85,9 +87,11 @@ select option{background:#0d1e30}
     <input id="aN" placeholder="Name" style="width:180px">
     <input id="aE" placeholder="Email" style="width:200px">
     <select id="aT">
+      <option value="505">505 RON</option>
+      <option value="840">840 RON (early bird)</option>
+      <option value="1050">1050 RON (regular)</option>
       <option value="630">630 RON</option>
       <option value="G">G (gratis)</option>
-      <option value="G?">G?</option>
       <option value="pending">pending</option>
       <option value="">— unpaid</option>
     </select>
@@ -116,15 +120,17 @@ function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 function txBadge(t) {
   t = (t||'').trim();
+  if (t === '505')                       return '<span class="tx tx-505">505 RON</span>';
+  if (t === '840')                       return '<span class="tx tx-840">840 RON</span>';
+  if (t === '1050')                      return '<span class="tx tx-1050">1050 RON</span>';
   if (t === '630')                       return '<span class="tx tx-630">630 RON</span>';
   if (t === 'G')                         return '<span class="tx tx-G">G</span>';
-  if (t === 'G?')                        return '<span class="tx tx-Gq">G?</span>';
   if (t.toLowerCase() === 'pending')     return '<span class="tx tx-P">pending</span>';
   if (!t)                                return '<span class="tx-e">—</span>';
   return '<span class="tx tx-P">' + esc(t) + '</span>';
 }
 
-function isPaid(t) { t=(t||'').trim(); return t==='630'||t==='G'||t==='G?'; }
+function isPaid(t) { t=(t||'').trim(); return t==='505'||t==='840'||t==='1050'||t==='630'||t==='G'; }
 
 function setTab(t) {
   tab = t;

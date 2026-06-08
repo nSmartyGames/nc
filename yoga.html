@@ -108,6 +108,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 </head>
 <body>
 
+
 <div class="nav-bar">
   <button type="button" class="nav-btn nb-logout" onclick="adminLogout()">Logout</button>
   <button type="button" class="nav-btn" onclick="location.href='initiation.html'">Initiation</button>
@@ -176,7 +177,7 @@ var PROXY = /^\/app(\/|$)/.test(location.pathname)
   ? location.origin + '/app/airtable-proxy.php'
   : location.origin + '/airtable-proxy.php';
 if (!sessionStorage.getItem('adminAuth')) {
-  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/login.html' : '/login.html';
 }
 var FC = {ID:'fldQ7kSY1KZ2bTska',LABEL:'fldqdzbMbgMf4fVU4',GROUPS:'fld4OYOz8TD70oFjP'};
 var FS = {EMAIL:'fldTKQVFs3vrMrwWA',NAME:'fld4Lx0LL4sfYOyy7',NOTE:'fld03gdtFjOIkn7wB',SUBS:'fldUvZSA5jTlsLQFH'};
@@ -703,7 +704,7 @@ function openAsStudent(idx){
 
 function adminLogout(){
   sessionStorage.removeItem('adminAuth');
-  window.location.href=/^\/app(\/|$)/.test(location.pathname)?'/app/':'/';
+  window.location.href=/^\/app(\/|$)/.test(location.pathname)?'/app/login.html':'/login.html';
 }
 function openPopup(url){
   document.getElementById('popupFrame').src=url;

@@ -4,6 +4,7 @@ require_once dirname(__DIR__) . '/wp-load.php';
 define('AT_TOKEN',   'patztnHPJdo6ihr0l.f02ace97da8e694bd943399deda96fde235cd8480f1605e29e7302772884d14c');
 define('AT_BASE',    'appSIg5wDCS1LQ52p');
 define('VIMEO_TOKEN','9ec33cb8b24dc13821c695465f68f4ec');
+define('ADMIN_EMAIL','lucian.virtic@hotmail.com');
 define('IMAP_HOST',  '{mail.nicolaecatrina.com:993/imap/ssl/novalidate-cert}INBOX');
 define('IMAP_USER',  'contact@nicolaecatrina.com');
 define('IMAP_PASS',  'Ananda69#');
@@ -293,7 +294,8 @@ switch ($action) {
             }
         }
         if ($found) {
-            $isAdmin = ($code === '24865');
+            $f = $found['fields'] ?? [];
+            $isAdmin = strtolower(trim($f['email'] ?? '')) === ADMIN_EMAIL;
             echo json_encode(array('ok' => true, 'student' => $found, 'isAdmin' => $isAdmin));
         } else {
             echo json_encode(array('error' => 'Invalid code'));
@@ -353,7 +355,7 @@ switch ($action) {
         // Send email via wp_mail or PHP mail
         $name = $found['fields']['name'] ?? 'Student';
         $subject = 'Your login code';
-        $message = "Hi $name,\n\nYour login code is: $code\n\nThis code is valid until you request a new one.";
+        $message = "Hi $name,\n\nYour login code is: $code\n\nUse it to log in at: https://www.nicolaecatrina.com/app/student.html\n\nThis code is valid until you request a new one.";
         $headers = 'From: noreply@nicolaecatrina.com';
         wp_mail($email, $subject, $message, $headers);
         echo json_encode(array('ok' => true, 'message' => 'Code sent to your email'));
