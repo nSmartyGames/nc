@@ -354,8 +354,8 @@ switch ($action) {
         ));
         // Send email via wp_mail or PHP mail
         $name = $found['fields']['name'] ?? 'Student';
-        $subject = 'Your login code';
-        $message = "Hi $name,\n\nYour login code is: $code\n\nUse it to log in at: https://www.nicolaecatrina.com/app/student.html\n\nThis code is valid until you request a new one.";
+        $subject = '[RO] Codul tău de acces';
+        $message = "Salut $name,\n\nCodul tău de acces este: $code\n\nFolosește-l pentru a te autentifica la: https://www.nicolaecatrina.com/app/\n\nCodul este valabil până când soliciți unul nou.";
         $headers = 'From: noreply@nicolaecatrina.com';
         wp_mail($email, $subject, $message, $headers);
         echo json_encode(array('ok' => true, 'message' => 'Code sent to your email'));
