@@ -36,13 +36,22 @@ tbody tr:hover td{background:#0d1e30}
 .note-cell{color:#4a7a8a;font-size:12px}
 .num{color:#1a4a6a;font-size:12px;text-align:right;width:34px}
 #sy{height:20px;color:#5ab0e0;font-size:13px;margin-bottom:8px}
-.add-section{margin-top:18px;border-top:1px solid #1e4a6a;padding-top:12px;display:none}
+.add-section{margin-bottom:10px;border-bottom:1px solid #1e4a6a;padding-bottom:10px;display:none}
 .add-section.open{display:block}
+td[data-field]{cursor:pointer}
+td[data-field]:hover{background:#0d2a40}
 .add-section h3{color:#5ab0e0;font-size:13px;font-weight:600;margin-bottom:8px}
 .add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .add-row input,.add-row select{background:#080f1a;color:#c0d8ec;border:1px solid #1e4a6a;border-radius:4px;padding:5px 9px;font-size:13px;outline:none;font-family:inherit}
 .add-row input:focus,.add-row select:focus{border-color:#5ab0e0}
 select option{background:#0d1e30}
+.rudra-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:flex-start;justify-content:center;padding-top:60px}
+.rudra-overlay.open{display:flex}
+.rudra-modal{background:#0d1220;border:1px solid #4a2a7a;border-radius:10px;width:min(700px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.rudra-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #3a1a5a;flex-shrink:0}
+.rudra-modal-body{overflow-y:auto;padding:14px 16px}
+.rudra-close{background:none;border:none;color:#6a3a9a;font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
+.rudra-close:hover{color:#c07ae0}
 </style>
 </head>
 <body>
@@ -60,26 +69,8 @@ select option{background:#0d1e30}
   <button class="tab" id="tabR" onclick="setTab('replay')">Replay <span id="cntR"></span></button>
   <span class="stat-line" id="statLine"></span>
   <button class="btn" onclick="copyPaid()" style="margin-left:auto">Copy paid emails</button>
-  <button class="btn" onclick="toggleAdd()">+ Add</button>
+  <button class="btn" id="btnRudra" onclick="toggleRudra()" style="background:#1a0a2e;border-color:#6a3a9a;color:#c07ae0">📿 Rudra <span id="rudraCount" style="color:#a07ae0"></span></button>
 </div>
-
-<div class="search-row">
-  <input class="si" id="sN" placeholder="Name…" oninput="render()">
-  <input class="si" id="sE" placeholder="Email…" oninput="render()">
-</div>
-
-<table>
-  <thead>
-    <tr>
-      <th class="num">#</th>
-      <th>Name</th>
-      <th>Email</th>
-      <th>Tax</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody id="tbody"></tbody>
-</table>
 
 <div class="add-section" id="addSection">
   <h3>Add subscriber</h3>
@@ -101,6 +92,48 @@ select option{background:#0d1e30}
     </select>
     <input id="aNote" placeholder="Notes" style="width:160px">
     <button class="btn" onclick="addRow()">Save</button>
+  </div>
+</div>
+
+<button class="btn" onclick="toggleAdd()" id="btnAdd" style="margin-bottom:10px">+ Add subscriber</button>
+
+<div class="search-row">
+  <input class="si" id="sN" placeholder="Name…" oninput="render()">
+  <input class="si" id="sE" placeholder="Email…" oninput="render()">
+</div>
+
+<table id="mainTable">
+  <thead>
+    <tr>
+      <th class="num">#</th>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Tax</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+<div id="rudraSection" class="rudra-overlay" onclick="if(event.target===this)toggleRudra()">
+  <div class="rudra-modal">
+    <div class="rudra-modal-head">
+      <span style="color:#c07ae0;font-size:14px;font-weight:700">📿 Rudra Initiation — Subscribers</span>
+      <button class="rudra-close" onclick="toggleRudra()">✕</button>
+    </div>
+    <div class="rudra-modal-body">
+      <table>
+        <thead>
+          <tr>
+            <th class="num">#</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="rudraTbody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -163,11 +196,12 @@ function render() {
 
   var html = '';
   vis.forEach(function(r, i) {
-    html += '<tr><td class="num">'+(i+1)+'</td>'
-          + '<td>'+esc(r.name)+'</td>'
-          + '<td style="opacity:.8;font-size:13px">'+esc(r.email)+'</td>'
-          + '<td>'+txBadge(r.tax)+'</td>'
-          + '<td class="note-cell">'+esc(r.notes)+'</td></tr>';
+    var idx = data.indexOf(r);
+    html += '<tr data-idx="'+idx+'"><td class="num">'+(i+1)+'</td>'
+          + '<td data-field="name">'+esc(r.name)+'</td>'
+          + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+'</td>'
+          + '<td data-field="tax">'+txBadge(r.tax)+'</td>'
+          + '<td data-field="notes" class="note-cell">'+esc(r.notes)+'</td></tr>';
   });
   document.getElementById('tbody').innerHTML = html ||
     '<tr><td colspan="5" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
@@ -186,7 +220,8 @@ function copyPaid() {
 }
 
 function toggleAdd() {
-  document.getElementById('addSection').classList.toggle('open');
+  var open = document.getElementById('addSection').classList.toggle('open');
+  document.getElementById('btnAdd').textContent = open ? '✕ Cancel' : '+ Add subscriber';
 }
 
 async function addRow() {
@@ -207,6 +242,8 @@ async function addRow() {
     document.getElementById('aN').value = '';
     document.getElementById('aE').value = '';
     document.getElementById('aNote').value = '';
+    document.getElementById('addSection').classList.remove('open');
+    document.getElementById('btnAdd').textContent = '+ Add subscriber';
     setTab(session);
     sy('Added: '+name);
     setTimeout(function(){ sy(''); }, 3000);
@@ -223,6 +260,130 @@ async function load() {
     sy('');
     render();
   } catch(e) { sy('Load failed: '+e.message); }
+}
+
+var TAX_OPTS = ['505','840','1050','630','G','pending',''];
+
+function makeEditable(td, r, field) {
+  if (td.querySelector('input,select')) return;
+  var origEmail = r.email;
+  var oldVal = r[field];
+  var el;
+  if (field === 'tax') {
+    el = document.createElement('select');
+    TAX_OPTS.forEach(function(v) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = v || '— unpaid';
+      if (v === oldVal) o.selected = true;
+      el.appendChild(o);
+    });
+  } else {
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = oldVal;
+    el.style.width = field === 'notes' ? '200px' : field === 'email' ? '180px' : '140px';
+  }
+  el.style.cssText += ';background:#080f1a;color:#c0d8ec;border:1px solid #5ab0e0;border-radius:3px;padding:2px 6px;font-size:13px;font-family:inherit';
+  td.innerHTML = '';
+  td.appendChild(el);
+  el.focus();
+  if (el.select) el.select();
+
+  function save() {
+    var newVal = el.value;
+    if (newVal === oldVal) { render(); return; }
+    r[field] = newVal;
+    render();
+    fetch(PROXY + '?action=ks26_edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orig_email: origEmail,
+        name: r.name, email: r.email, tax: r.tax,
+        session: r.session, notes: r.notes
+      })
+    }).then(function(res){ return res.json(); }).then(function(j){
+      if (j.error) { sy('Save error: ' + j.error); r[field] = oldVal; render(); }
+    }).catch(function(e){ sy('Save error: '+e.message); r[field] = oldVal; render(); });
+  }
+
+  el.addEventListener('blur', save);
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { el.blur(); }
+    if (e.key === 'Escape') { r[field] = oldVal; render(); }
+  });
+}
+
+document.getElementById('tbody').addEventListener('click', function(e) {
+  var td = e.target.closest('td[data-field]');
+  if (!td) return;
+  var tr = td.closest('tr[data-idx]');
+  if (!tr) return;
+  var r = data[parseInt(tr.getAttribute('data-idx'))];
+  if (r) makeEditable(td, r, td.getAttribute('data-field'));
+});
+
+var rudraData = null, rudraOpen = false;
+
+function parseCSV(text) {
+  var rows = [], lines = text.replace(/\r/g,'').split('\n');
+  if (!lines.length) return rows;
+  function splitLine(line) {
+    var cols = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else cur += c;
+    }
+    cols.push(cur);
+    return cols.map(function(s){ return s.trim(); });
+  }
+  var headers = splitLine(lines[0]);
+  for (var i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    var vals = splitLine(lines[i]);
+    var obj = {};
+    headers.forEach(function(h, j){ obj[h] = vals[j] || ''; });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function renderRudra() {
+  if (!rudraData) return;
+  var html = '';
+  rudraData.forEach(function(r, i) {
+    var name  = r.Name  || r.name  || '';
+    var email = r.Email || r.email || '';
+    var notes = r.Notes || r.notes || '';
+    html += '<tr>'
+          + '<td class="num">'+(i+1)+'</td>'
+          + '<td>'+esc(name)+'</td>'
+          + '<td style="opacity:.8;font-size:13px">'+esc(email)+'</td>'
+          + '<td class="note-cell">'+esc(notes)+'</td>'
+          + '</tr>';
+  });
+  document.getElementById('rudraTbody').innerHTML = html ||
+    '<tr><td colspan="4" style="text-align:center;padding:20px;color:#3a1a5a">No subscribers yet</td></tr>';
+  document.getElementById('rudraCount').textContent = rudraData.length ? '('+rudraData.length+')' : '';
+}
+
+async function toggleRudra() {
+  rudraOpen = !rudraOpen;
+  document.getElementById('rudraSection').classList.toggle('open', rudraOpen);
+  var btn = document.getElementById('btnRudra');
+  btn.style.background = rudraOpen ? '#2a1040' : '#1a0a2e';
+  btn.style.borderColor = rudraOpen ? '#9a50d0' : '#6a3a9a';
+  if (rudraOpen && !rudraData) {
+    sy('Loading Rudra list…');
+    try {
+      var res = await fetch('rudra_initiation.csv?_=' + Date.now());
+      var text = await res.text();
+      rudraData = parseCSV(text);
+      renderRudra();
+      sy('');
+    } catch(e) { sy('Error loading CSV: '+e.message); }
+  }
 }
 
 load();

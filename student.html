@@ -92,6 +92,11 @@ a:hover{text-decoration:underline}
 <body>
 
 
+<div id="loader" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px">
+  <div style="font-size:48px;animation:spin 1.4s linear infinite">⏳</div>
+</div>
+<style>@keyframes spin{0%{transform:rotate(0deg)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}</style>
+
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard" style="display:none">
   <div class="dash-header">
@@ -107,6 +112,14 @@ a:hover{text-decoration:underline}
     <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   </div>
   <div id="subsList"></div>
+  <div style="margin-top:18px;background:#1e1a0a;border:1px solid #5a4200;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+    <svg width="28" height="28" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="120" cy="120" r="120" fill="#2CA5E0"/><path d="M176 70L152.6 174.8c-1.7 7.6-6.2 9.5-12.6 5.9l-34.8-25.6-16.8 16.2c-1.9 1.9-3.4 3.4-6.9 3.4l2.5-34.8 63.4-57.3c2.8-2.5-.6-3.8-4.2-1.4l-78.3 49.3-33.7-10.5c-7.3-2.3-7.5-7.3 1.5-10.8l131.5-50.7c6.1-2.2 11.4 1.5 9.4 11.3z" fill="white"/></svg>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#d4a017;margin-bottom:2px">Canal Telegram — Kashmir Shaivism Retreat 2026</div>
+      <div style="font-size:12px;color:#aaa;margin-bottom:6px">anunțuri, linkuri și actualizări / announcements, links and updates.</div>
+      <a href="https://t.me/+xFgy-nFpA4E4ODRk" target="_blank" rel="noopener" style="display:inline-block;background:#0d1e2e;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;text-decoration:none">Alătură-te →</a>
+    </div>
+  </div>
 </div>
 
 
@@ -142,6 +155,7 @@ var student = null;
 var courses = [];
 var sessions = [];
 var ks2026Enrollments = {};
+var rudraInitStatus = null;
 
 var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
 
@@ -165,9 +179,17 @@ async function loadCourseData() {
     var kr = await fetch(PROXY + '?action=ks2026').then(function(r){return r.json();});
     ks2026Enrollments = kr.enrollments || {};
   } catch(e) { ks2026Enrollments = {}; }
+  try {
+    var se = ((student && student.fields && student.fields.email) || '').toLowerCase();
+    if (se) {
+      var rr = await fetch(PROXY + '?action=rudra_status&email=' + encodeURIComponent(se)).then(function(r){return r.json();});
+      rudraInitStatus = rr;
+    }
+  } catch(e) { rudraInitStatus = null; }
 }
 
 function showDashboard() {
+  document.getElementById('loader').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('contactBar').style.display = 'block';
 
@@ -212,14 +234,15 @@ function showDashboard() {
   ksCard += '</div></div>';
   if (isKsEnrolled) {
     ksCard += '<div class="sub-body">';
-    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Sunteti inscris - incepand cu 25 iunie, 14:00 CEST.</div>';
-    if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">🔴 <strong style="color:#ccc">Live</strong>: participare in timp real la tabara.</div>';
+    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Thank you for registering for the 2026 Kashmir Shaivism Retreat!<br><span style="color:#aaa">Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!</span></div>';
+    if (hasLive)   ksCard += '';
     if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">📼 <strong style="color:#ccc">Replay</strong>: acces la inregistrarile taberei dupa finalizare.</div>';
 
     ksCard += '</div>';
   }
   ksCard += '</div>';
   var html = ksCard;
+  if (isKsEnrolled) html += buildRudraCard();
   var hasCourseSubs = false;
   courses.forEach(function(c) {
     var sub = subs[c.id];
@@ -289,7 +312,7 @@ function showDashboard() {
     html += '</div>';
   });
 
-  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">No active subscriptions found</div>';
+  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">No active course subscription found</div>';
   document.getElementById('subsList').innerHTML = html;
 }
 
@@ -319,6 +342,81 @@ function statusLabel(s) {
   return {P:'Paid',F:'Full',G:'Paid',S:'Stopped'}[letter] || s;
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function rudraConfirmHTML(loc) {
+  var locRO = loc === 'Cluj' ? 'Cluj' : 'București';
+  var locEN = loc === 'Cluj' ? 'Cluj' : 'Bucharest';
+  var addr  = loc === 'Cluj' ? 'str. Bâlea 9k' : 'Alecu Russo 9';
+  return '<div style="color:#7ec850;font-size:13px;margin-bottom:12px">✓ Vă mulțumim pentru înscriere! / Thank you for subscribing!</div>' +
+    '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:10px">' +
+    '<strong style="color:#c07ae0">Inițierea în mantra lui Rudra-Șiva</strong><br>' +
+    '📅 <strong>8 iulie 2026</strong>, ora <strong>19:00</strong><br>' +
+    '📍 <strong>' + locRO + '</strong>, ' + addr +
+    '</div>' +
+    '<div style="font-size:12px;color:#777;line-height:1.7">' +
+    '<strong>The initiation in the mantra of Rudra-Shiva</strong><br>' +
+    '📅 <strong>July 8, 2026</strong>, at <strong>19:00</strong><br>' +
+    '📍 <strong>' + locEN + '</strong>, ' + addr +
+    '</div>';
+}
+
+function rudraFormHTML() {
+  return '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px">' +
+    '<strong style="color:#c07ae0">Inițierea în mantra lui Rudra-Șiva</strong> va fi oferită pe <strong>8 iulie 2026</strong>, de la <strong>19:00</strong>, în București și în Cluj (și de asemenea în august în Costinești).' +
+    '<br><span style="font-size:12px;color:#777">The initiation in the mantra of Rudra-Shiva will take place on <strong>July 8, 2026</strong>, at <strong>19:00</strong>, in Bucharest and Cluj (and also in August in Costinești).</span>' +
+    '</div>' +
+    '<div style="font-size:12px;color:#aaa;margin-bottom:10px">Alege locația / Choose location:</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+    '<button onclick="rudraSubscribe(\'Bucuresti\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">📍 București</button>' +
+    '<button onclick="rudraSubscribe(\'Cluj\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">📍 Cluj</button>' +
+    '</div>';
+}
+
+function buildRudraCard() {
+  var subscribed = rudraInitStatus && rudraInitStatus.subscribed;
+  var loc = rudraInitStatus && rudraInitStatus.location || '';
+  var card = '<div class="sub-card">';
+  card += '<div class="sub-header" onclick="toggleSub(this)">';
+  card += '<div class="sub-title">';
+  card += '<span class="sub-badge" style="background:#1a0a2e;border-color:#6a3a9a;color:#c07ae0">Rudra-Shiva</span>';
+  card += '<span class="sub-label">Inițiere / Initiation</span>';
+  card += '</div>';
+  card += '<div style="display:flex;align-items:center;gap:10px">';
+  if (subscribed) {
+    card += '<span class="sub-status" style="background:#2a1040;color:#c07ae0;border:1px solid #7a3aaa">Înscris</span>';
+  } else {
+    card += '<span class="sub-status" style="background:#2a2200;color:#d4a017;border:1px solid #6a5000">Disponibil</span>';
+  }
+  card += '<span class="chevron">▶</span>';
+  card += '</div></div>';
+  card += '<div class="sub-body" id="rudraBody">';
+  card += subscribed ? rudraConfirmHTML(loc) : rudraFormHTML();
+  card += '</div></div>';
+  return card;
+}
+
+async function rudraSubscribe(loc) {
+  var f = student && student.fields || {};
+  var email = (f.email || '').toLowerCase();
+  var name = f.name || '';
+  var btns = document.querySelectorAll('#rudraBody button');
+  btns.forEach(function(b){ b.disabled = true; b.style.opacity = '.5'; });
+  try {
+    var res = await fetch(PROXY + '?action=rudra_subscribe', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: email, name: name, location: loc})
+    }).then(function(r){ return r.json(); });
+    if (res.ok) {
+      rudraInitStatus = {subscribed: true, location: loc};
+      var body = document.getElementById('rudraBody');
+      if (body) body.innerHTML = rudraConfirmHTML(loc);
+    } else {
+      btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
+    }
+  } catch(e) {
+    btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
+  }
+}
 function safeId(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }
 
 async function playSession(el) {

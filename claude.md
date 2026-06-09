@@ -48,7 +48,7 @@ Files live at: `nicolaecatrina.com/public_html/app/`
 | label | fldqdzbMbgMf4fVU4 | singleLineText |
 | groups | fld4OYOz8TD70oFjP | singleLineText |
 
-Courses: YTT-M1 (groups: All,G6,G7), YTT-M2 (groups: All,G4), YTT-M3 (groups: All,G1,G2), I Ching (groups: All), AL (groups: All,G4)
+Courses: YTT-M1 (groups: All,G6,G7,G8), YTT-M2 (groups: All,G4), YTT-M3 (groups: All,G1,G2), I Ching (groups: All), AL (groups: All,G4)
 
 ### Table: Students (tblrZi26rAsAHDI4z)
 | Field | ID | Type |

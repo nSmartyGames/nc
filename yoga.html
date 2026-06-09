@@ -111,7 +111,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 
 <div class="nav-bar">
   <button type="button" class="nav-btn nb-logout" onclick="adminLogout()">Logout</button>
-  <button type="button" class="nav-btn" onclick="location.href='initiation.html'">Initiation</button>
+  <button type="button" class="nav-btn" onclick="location.href='mm_initiation.html'">MM Initiation</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
@@ -212,7 +212,21 @@ async function post(action,id,body){
 
 function fv(f, fldId, fldName) { return f[fldId] || f[fldName] || ''; }
 
+function saveCache(){
+  try{sessionStorage.setItem('nc_cache',JSON.stringify({courses:courses,rows:rows,sessions:sessions}));}catch(e){}
+}
+
 async function load(){
+  var navType=(performance.getEntriesByType('navigation')[0]||{}).type;
+  var cached=navType!=='reload'?sessionStorage.getItem('nc_cache'):null;
+  if(cached){
+    try{
+      var d=JSON.parse(cached);
+      courses=d.courses||[];rows=d.rows||[];sessions=d.sessions||[];
+      buildCourseHeader();render();checkMonthTransition();
+      return;
+    }catch(e){}
+  }
   sy('Loading…');
   try{
     var cr=await get('courses');
@@ -258,6 +272,7 @@ async function load(){
   buildCourseHeader();
   render();
   checkMonthTransition();
+  saveCache();
 }
 
 function buildCourseHeader(){
@@ -331,6 +346,7 @@ async function saveStudent(row){
   try{
     await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});
     sy('Synced ✓');setTimeout(function(){sy('');},2000);
+    saveCache();
   }catch(e){sy('Save error');}
 }
 
@@ -515,7 +531,7 @@ async function saveAddRow(){
     var res=await post('create',null,{[FS.EMAIL]:email,[FS.NAME]:name,[FS.SUBS]:JSON.stringify(subs),[FS.NOTE]:''});
     rows.push({recordId:res.id||'',email:email,name:name,note:'',subscriptions:subs});
     sy('Synced ✓');setTimeout(function(){sy('');},2000);
-    cancelAddForm();render();
+    saveCache();cancelAddForm();render();
   }catch(e){sy('Create error');}
 }
 
@@ -558,7 +574,7 @@ async function vimeoImport(mode){
       sy('Saved '+r.count+' sessions ✓');
       var sesr=await get('sessions');
       sessions=(sesr.records||[]).map(function(r){var f=r.fields||{};return {id:f.id||'',session:f.session||'',link:f.link||'',email:(f.email||'').toLowerCase()};});
-      renderSessions();
+      renderSessions();saveCache();
       setTimeout(function(){sy('');},2000);
     } else {
       sy('Save error');
@@ -625,6 +641,7 @@ async function rollbackTransition(){
     try{await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});}catch(e){}
   }
   sy('');
+  saveCache();
   localStorage.removeItem(transitionKey());
   render();
   checkMonthTransition();
@@ -684,6 +701,7 @@ async function doTransition(){
     try{await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});}catch(e){}
   }
   sy('');
+  saveCache();
   render();
   checkMonthTransition();
   var now=new Date();
