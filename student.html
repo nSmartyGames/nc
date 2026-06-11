@@ -72,11 +72,15 @@ a:hover{text-decoration:underline}
 
 
 /* Nav bar */
-.nav-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:14px}
+.nav-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
 .nav-btn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
 .nav-btn:hover{border-color:#d4a017;background:#333}
 .nav-btn.nb-student{color:#e07070;border-color:#6a2a2a}
 .nav-btn.nb-student:hover{background:#3a1e1e;border-color:#e07070}
+.lang-toggle{display:flex;gap:2px;margin-right:4px}
+.lang-btn{background:#1e1e1e;border:1px solid #3a3a3a;border-radius:5px;padding:3px 9px;font-size:12px;cursor:pointer;color:#666;font-family:inherit;transition:all .15s}
+.lang-btn.active{border-color:#d4a017;color:#d4a017;background:#2a2200}
+.lang-btn:hover:not(.active){border-color:#555;color:#999}
 
 /* Popup */
 .popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center}
@@ -106,18 +110,22 @@ a:hover{text-decoration:underline}
     </div>
   </div>
   <div class="nav-bar">
-    <button class="nav-btn nb-student" onclick="logout()">Logout</button>
-    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
-    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
-    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
+    <div class="lang-toggle">
+      <button class="lang-btn" id="langRO" onclick="setLang('ro')">🇷🇴</button>
+      <button class="lang-btn" id="langEN" onclick="setLang('en')">🇬🇧</button>
+    </div>
+    <button class="nav-btn nb-student" id="btnLogout" onclick="logout()">Logout</button>
+    <button class="nav-btn" id="btnEvents" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
+    <button class="nav-btn" id="btnOndemand" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
+    <button class="nav-btn" id="btnOngoing" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   </div>
   <div id="subsList"></div>
   <div style="margin-top:18px;background:#1e1a0a;border:1px solid #5a4200;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
     <svg width="28" height="28" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="120" cy="120" r="120" fill="#2CA5E0"/><path d="M176 70L152.6 174.8c-1.7 7.6-6.2 9.5-12.6 5.9l-34.8-25.6-16.8 16.2c-1.9 1.9-3.4 3.4-6.9 3.4l2.5-34.8 63.4-57.3c2.8-2.5-.6-3.8-4.2-1.4l-78.3 49.3-33.7-10.5c-7.3-2.3-7.5-7.3 1.5-10.8l131.5-50.7c6.1-2.2 11.4 1.5 9.4 11.3z" fill="white"/></svg>
     <div>
-      <div style="font-size:13px;font-weight:600;color:#d4a017;margin-bottom:2px">Canal Telegram — Kashmir Shaivism Retreat 2026</div>
-      <div style="font-size:12px;color:#aaa;margin-bottom:6px">anunțuri, linkuri și actualizări / announcements, links and updates.</div>
-      <a href="https://t.me/+xFgy-nFpA4E4ODRk" target="_blank" rel="noopener" style="display:inline-block;background:#0d1e2e;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;text-decoration:none">Alătură-te →</a>
+      <div id="tgTitle" style="font-size:13px;font-weight:600;color:#d4a017;margin-bottom:2px">Canal Telegram — Kashmir Shaivism Retreat 2026</div>
+      <div id="tgDesc" style="font-size:12px;color:#aaa;margin-bottom:6px">anunțuri, linkuri și actualizări / announcements, links and updates.</div>
+      <a href="https://t.me/+xFgy-nFpA4E4ODRk" target="_blank" rel="noopener" style="display:inline-block;background:#0d1e2e;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;text-decoration:none" id="tgJoin">Alătură-te →</a>
     </div>
   </div>
 </div>
@@ -126,7 +134,7 @@ a:hover{text-decoration:underline}
 <!-- Contact bar (logged in) -->
 <div class="contact-bar" id="contactBar">
   <div class="contact-tab" onclick="toggleContactBar()">
-    <span class="contact-tab-label">✉ Contact Teacher</span>
+    <span class="contact-tab-label" id="contactTabLabel">✉ Contact Teacher</span>
     <span class="contact-chevron" id="contactChevron">▲</span>
   </div>
   <div class="contact-form" id="contactForm">
@@ -142,7 +150,7 @@ a:hover{text-decoration:underline}
 <!-- Popup -->
 <div class="popup-overlay" id="popupOverlay" onclick="handleOverlayClick(event)">
   <div class="popup-box">
-    <button class="popup-close" onclick="closePopup()">✕ Close</button>
+    <button class="popup-close" id="popupCloseBtn" onclick="closePopup()">✕ Close</button>
     <iframe class="popup-frame" id="popupFrame" src="" allowfullscreen></iframe>
   </div>
 </div>
@@ -155,9 +163,141 @@ var student = null;
 var courses = [];
 var sessions = [];
 var ks2026Enrollments = {};
-var rudraInitStatus = null;
 
 var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+
+var lang = localStorage.getItem('lang') || 'ro';
+
+var T = {
+  en: {
+    logout: 'Logout',
+    events: 'Events',
+    ondemand: 'On-demand',
+    ongoing: 'Ongoing',
+    welcome: 'Welcome, ',
+    contactTeacher: '✉ Contact',
+    subjectPlaceholder: 'Subject',
+    messagePlaceholder: 'Your message…',
+    send: 'Send',
+    close: '✕ Close',
+    tgTitle: 'Telegram Channel — Kashmir Shaivism Retreat 2026',
+    tgDesc: 'announcements and notifications.',
+    tgJoin: 'Join →',
+    months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    statusNotPaid: 'Not paid',
+    statusPaid: 'Paid',
+    statusFull: 'Full',
+    statusStopped: 'Stopped',
+    noSessions: 'No sessions available yet',
+    noSubs: 'No active course subscription found',
+    loading: 'Loading ',
+    password: 'Password:',
+    copy: 'Copy',
+    networkError: 'Network error',
+    fillSubjectMessage: 'Fill in subject and message',
+    sending: 'Sending…',
+    messageSent: 'Message sent!',
+    failedToSend: 'Failed to send',
+    ksJoin: 'I want to join!',
+    ksTypeLabel: function(hasLive, hasReplay) {
+      return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
+    },
+    ksThankYou: 'Thank you for registering for the 2026 Kashmir Shaivism Retreat!',
+    ksStarting: '🗓 Starting June 25, 14:00 CEST',
+    ksZoomNote: '🔗 The Zoom platform connection link will be shown here a few days prior to the beginning of the live event.',
+    ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
+    rudraSection: 'Initiation',
+    rudraEnrolled: 'Enrolled',
+    rudraTitle: 'The initiation in the mantra of Rudra-Shiva',
+    rudraDate: 'July 8, 2026',
+    rudraAt: 'at',
+    rudraDesc: 'will take place on <strong>July 8, 2026</strong>, at <strong>19:00</strong>, in Bucharest and Cluj (and also in August in Costinești).',
+    rudraChooseLocation: 'Choose location:',
+    rudraThankYou: '✓ Thank you for subscribing!',
+    rudraBucharest: 'Bucharest',
+    rudraBucharestBtn: '📍 Bucharest',
+    rudraClujBtn: '📍 Cluj'
+  },
+  ro: {
+    logout: 'Deconectare',
+    events: 'Evenimente',
+    ondemand: 'La cerere',
+    ongoing: 'În desfășurare',
+    welcome: 'Bun venit, ',
+    contactTeacher: '✉ Contact',
+    subjectPlaceholder: 'Subiect',
+    messagePlaceholder: 'Mesajul tău…',
+    send: 'Trimite',
+    close: '✕ Închide',
+    tgTitle: 'Canal Telegram — Kashmir Shaivism Retreat 2026',
+    tgDesc: 'anunturi și notificări.',
+    tgJoin: 'Alătură-te →',
+    months: ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'],
+    statusNotPaid: 'Neachitat',
+    statusPaid: 'Achitat',
+    statusFull: 'Integral',
+    statusStopped: 'Oprit',
+    noSessions: 'Nicio sesiune disponibilă',
+    noSubs: 'Niciun abonament activ găsit',
+    loading: 'Se încarcă ',
+    password: 'Parolă:',
+    copy: 'Copiază',
+    networkError: 'Eroare de rețea',
+    fillSubjectMessage: 'Completați subiectul și mesajul',
+    sending: 'Se trimite…',
+    messageSent: 'Mesaj trimis!',
+    failedToSend: 'Trimitere eșuată',
+    ksJoin: 'Vreau să particip!',
+    ksTypeLabel: function(hasLive, hasReplay) {
+      return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
+    },
+    ksThankYou: 'Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!',
+    ksStarting: '🗓 Începând cu 25 iunie, 14:00 CEST',
+    ksZoomNote: '🔗 Link-ul de conectare pe platforma Zoom va apărea aici cu câteva zile înainte de începerea evenimentului live.',
+    ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
+    rudraSection: 'Inițiere',
+    rudraEnrolled: 'Înscris',
+    rudraTitle: 'Inițierea în mantra lui Rudra-Șiva',
+    rudraDate: '8 iulie 2026',
+    rudraAt: 'ora',
+    rudraDesc: 'va fi oferită pe <strong>8 iulie 2026</strong>, de la <strong>19:00</strong>, în București și în Cluj (și de asemenea în august în Costinești).',
+    rudraChooseLocation: 'Alege locația:',
+    rudraThankYou: '✓ Vă mulțumim pentru înscriere!',
+    rudraBucharest: 'București',
+    rudraBucharestBtn: '📍 București',
+    rudraClujBtn: '📍 Cluj'
+  }
+};
+
+function t() { return T[lang]; }
+
+function applyLang() {
+  var tr = t();
+  var el;
+  if ((el = document.getElementById('btnLogout')))    el.textContent = tr.logout;
+  if ((el = document.getElementById('btnEvents')))    el.textContent = tr.events;
+  if ((el = document.getElementById('btnOndemand')))  el.textContent = tr.ondemand;
+  if ((el = document.getElementById('btnOngoing')))   el.textContent = tr.ongoing;
+  if ((el = document.getElementById('contactTabLabel'))) el.textContent = tr.contactTeacher;
+  if ((el = document.getElementById('contactSubject')))  el.placeholder = tr.subjectPlaceholder;
+  if ((el = document.getElementById('contactMessage')))  el.placeholder = tr.messagePlaceholder;
+  if ((el = document.getElementById('contactSend')))     el.textContent = tr.send;
+  if ((el = document.getElementById('popupCloseBtn')))   el.textContent = tr.close;
+  if ((el = document.getElementById('tgTitle')))         el.textContent = tr.tgTitle;
+  if ((el = document.getElementById('tgDesc')))          el.textContent = tr.tgDesc;
+  if ((el = document.getElementById('tgJoin')))          el.textContent = tr.tgJoin;
+  var ro = document.getElementById('langRO'), en = document.getElementById('langEN');
+  if (ro) { ro.classList.toggle('active', lang === 'ro'); }
+  if (en) { en.classList.toggle('active', lang === 'en'); }
+  document.documentElement.lang = lang;
+}
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('lang', l);
+  applyLang();
+  if (student) showDashboard();
+}
 
 
 async function loadCourseData() {
@@ -179,40 +319,37 @@ async function loadCourseData() {
     var kr = await fetch(PROXY + '?action=ks2026').then(function(r){return r.json();});
     ks2026Enrollments = kr.enrollments || {};
   } catch(e) { ks2026Enrollments = {}; }
-  try {
-    var se = ((student && student.fields && student.fields.email) || '').toLowerCase();
-    if (se) {
-      var rr = await fetch(PROXY + '?action=rudra_status&email=' + encodeURIComponent(se)).then(function(r){return r.json();});
-      rudraInitStatus = rr;
-    }
-  } catch(e) { rudraInitStatus = null; }
 }
 
 function showDashboard() {
   document.getElementById('loader').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('contactBar').style.display = 'block';
+  applyLang();
 
+  var tr = t();
   var f = student.fields || {};
   var name = f.name || 'Student';
   var email = f.email || '';
-  document.getElementById('dashName').textContent = 'Welcome, ' + name;
+  document.getElementById('dashName').textContent = tr.welcome + name;
   document.getElementById('dashEmail').textContent = email;
 
   var subs = {};
   try { subs = JSON.parse(f.subscriptions || '{}'); } catch(e) {}
 
-  var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var MN = tr.months;
   var mo = new Date().getMonth();
   var currMonth = MN[mo];
   var nextMonth = MN[(mo+1)%12];
 
   var studentEmail = (f.email || '').toLowerCase();
-  var ksSessions = ks2026Enrollments[studentEmail] || [];
+  var ksData = ks2026Enrollments[studentEmail] || {};
+  var ksSessions = ksData.sessions || [];
   var isKsEnrolled = ksSessions.length > 0;
   var hasLive   = ksSessions.indexOf('live')   >= 0;
   var hasReplay = ksSessions.indexOf('replay') >= 0;
-  var ksTypeLabel = (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
+  var rudraLoc  = ksData.rudra || '';
+  var ksTypeLabel = tr.ksTypeLabel(hasLive, hasReplay);
   var ksCard = '<div class="sub-card">';
   ksCard += '<div class="sub-header"' + (isKsEnrolled ? ' onclick="toggleSub(this)"' : '') + '>';
   ksCard += '<div class="sub-title">';
@@ -229,20 +366,34 @@ function showDashboard() {
     if (hasReplay) ksCard += '<span class="sub-status" style="background:#1e2040;color:#5ab0e0;border:1px solid #2a6a9a">Replay</span>';
     ksCard += '<span class="chevron">▶</span>';
   } else {
-    ksCard += '<a href="https://nicolaecatrina.com/kashmir-shaivism-retreat-2026/" target="_blank" class="ks-join-link" onclick="event.stopPropagation()">Vreau sa particip!</a>';
+    ksCard += '<a href="https://nicolaecatrina.com/kashmir-shaivism-retreat-2026/" target="_blank" class="ks-join-link" onclick="event.stopPropagation()">' + tr.ksJoin + '</a>';
   }
   ksCard += '</div></div>';
   if (isKsEnrolled) {
     ksCard += '<div class="sub-body">';
-    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Thank you for registering for the 2026 Kashmir Shaivism Retreat!<br><span style="color:#aaa">Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!</span></div>';
-    if (hasLive)   ksCard += '';
-    if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">📼 <strong style="color:#ccc">Replay</strong>: acces la inregistrarile taberei dupa finalizare.</div>';
-
+    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span><br><span style="font-size:12px;color:#888;line-height:1.6">' + tr.ksZoomNote + '</span></div>';
+    ksCard += '<div style="height:8px"></div>';
+    if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">' + tr.ksReplayNote + '</div>';
+    ksCard += '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a">';
+    ksCard += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    ksCard += '<span style="background:#1a0a2e;border:1px solid #6a3a9a;color:#c07ae0;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700">Rudra-Shiva</span>';
+    ksCard += '<span style="font-size:13px;color:#c07ae0;font-weight:600">' + tr.rudraSection + '</span>';
+    if (rudraLoc) ksCard += '<span style="background:#2a1040;color:#c07ae0;border:1px solid #7a3aaa;border-radius:6px;padding:2px 8px;font-size:11px">' + tr.rudraEnrolled + '</span>';
+    ksCard += '</div>';
+    ksCard += '<div id="rudraBody">';
+    if (rudraLoc) {
+      var locDisplay = lang === 'ro'
+        ? (rudraLoc === 'Cluj' ? 'Cluj' : rudraLoc === 'Costinesti' ? 'Costinești' : 'București')
+        : (rudraLoc === 'Cluj' ? 'Cluj' : rudraLoc === 'Costinesti' ? 'Costinești' : 'Bucharest');
+      ksCard += rudraConfirmHTML(locDisplay);
+    } else {
+      ksCard += rudraFormHTML();
+    }
+    ksCard += '</div></div>';
     ksCard += '</div>';
   }
   ksCard += '</div>';
   var html = ksCard;
-  if (isKsEnrolled) html += buildRudraCard();
   var hasCourseSubs = false;
   courses.forEach(function(c) {
     var sub = subs[c.id];
@@ -256,17 +407,14 @@ function showDashboard() {
     var statusClass = 'st-' + currLetter;
     var isPaid = currLetter === 'P' || currLetter === 'F' || currLetter === 'G';
 
-    // Sessions: filter by course+group id, only for paid current month
     var groupId = c.id + '-G' + (sub.G || '');
     var courseSessions = [];
     if (isPaid && sub.G) {
       var allGroupSess = sessions.filter(function(s){ return s.id === groupId; });
-      // Build private override map for this student's email
       var privateMap = {};
       allGroupSess.forEach(function(s){
         if(s.email && s.email === studentEmail) privateMap[s.session] = true;
       });
-      // Private sessions for this student + public sessions not overridden by a private one
       allGroupSess.forEach(function(s){
         if(!s.email) {
           if(!privateMap[s.session]) courseSessions.push(s);
@@ -304,7 +452,7 @@ function showDashboard() {
         html += '</div>';
         html += '<div class="player-box" id="pb_' + c.id.replace(/[^a-zA-Z0-9]/g,'_') + '"></div>';
       } else {
-        html += '<div class="no-sessions">No sessions available yet</div>';
+        html += '<div class="no-sessions">' + tr.noSessions + '</div>';
       }
     }
 
@@ -312,7 +460,7 @@ function showDashboard() {
     html += '</div>';
   });
 
-  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">No active course subscription found</div>';
+  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">' + tr.noSubs + '</div>';
   document.getElementById('subsList').innerHTML = html;
 }
 
@@ -320,7 +468,6 @@ function toggleSub(el) {
   var body = el.nextElementSibling;
   var chevron = el.querySelector('.chevron');
   var isOpen = body.classList.contains('open');
-  // Close all
   document.querySelectorAll('.sub-body').forEach(function(b){b.classList.remove('open');});
   document.querySelectorAll('.chevron').forEach(function(c){c.classList.remove('open');});
   if (!isOpen) {
@@ -337,79 +484,49 @@ function logout() {
 }
 
 function statusLabel(s) {
-  if (!s) return 'Not paid';
+  var tr = t();
+  if (!s) return tr.statusNotPaid;
   var letter = s.replace(/\d+$/, '');
-  return {P:'Paid',F:'Full',G:'Paid',S:'Stopped'}[letter] || s;
+  return {P: tr.statusPaid, F: tr.statusFull, G: tr.statusPaid, S: tr.statusStopped}[letter] || s;
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-function rudraConfirmHTML(loc) {
-  var locRO = loc === 'Cluj' ? 'Cluj' : 'București';
-  var locEN = loc === 'Cluj' ? 'Cluj' : 'Bucharest';
-  var addr  = loc === 'Cluj' ? 'str. Bâlea 9k' : 'Alecu Russo 9';
-  return '<div style="color:#7ec850;font-size:13px;margin-bottom:12px">✓ Vă mulțumim pentru înscriere! / Thank you for subscribing!</div>' +
-    '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:10px">' +
-    '<strong style="color:#c07ae0">Inițierea în mantra lui Rudra-Șiva</strong><br>' +
-    '📅 <strong>8 iulie 2026</strong>, ora <strong>19:00</strong><br>' +
-    '📍 <strong>' + locRO + '</strong>, ' + addr +
-    '</div>' +
-    '<div style="font-size:12px;color:#777;line-height:1.7">' +
-    '<strong>The initiation in the mantra of Rudra-Shiva</strong><br>' +
-    '📅 <strong>July 8, 2026</strong>, at <strong>19:00</strong><br>' +
-    '📍 <strong>' + locEN + '</strong>, ' + addr +
+function rudraConfirmHTML(locDisplay) {
+  var tr = t();
+  return '<div style="color:#7ec850;font-size:13px;margin-bottom:10px">' + tr.rudraThankYou + '</div>' +
+    '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:6px">' +
+    '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
+    '📅 <strong>' + tr.rudraDate + '</strong>, ' + tr.rudraAt + ' <strong>19:00</strong> &nbsp;·&nbsp; <strong>' + locDisplay + '</strong>' +
     '</div>';
 }
-
 function rudraFormHTML() {
+  var tr = t();
   return '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px">' +
-    '<strong style="color:#c07ae0">Inițierea în mantra lui Rudra-Șiva</strong> va fi oferită pe <strong>8 iulie 2026</strong>, de la <strong>19:00</strong>, în București și în Cluj (și de asemenea în august în Costinești).' +
-    '<br><span style="font-size:12px;color:#777">The initiation in the mantra of Rudra-Shiva will take place on <strong>July 8, 2026</strong>, at <strong>19:00</strong>, in Bucharest and Cluj (and also in August in Costinești).</span>' +
+    '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
+    '<span style="color:#ccc">' + tr.rudraDesc + '</span>' +
     '</div>' +
-    '<div style="font-size:12px;color:#aaa;margin-bottom:10px">Alege locația / Choose location:</div>' +
+    '<div style="font-size:12px;color:#aaa;margin-bottom:10px">' + tr.rudraChooseLocation + '</div>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-    '<button onclick="rudraSubscribe(\'Bucuresti\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">📍 București</button>' +
-    '<button onclick="rudraSubscribe(\'Cluj\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">📍 Cluj</button>' +
+    '<button onclick="rudraSubscribe(\'Bucuresti\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">' + tr.rudraBucharestBtn + '</button>' +
+    '<button onclick="rudraSubscribe(\'Cluj\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">' + tr.rudraClujBtn + '</button>' +
     '</div>';
 }
-
-function buildRudraCard() {
-  var subscribed = rudraInitStatus && rudraInitStatus.subscribed;
-  var loc = rudraInitStatus && rudraInitStatus.location || '';
-  var card = '<div class="sub-card">';
-  card += '<div class="sub-header" onclick="toggleSub(this)">';
-  card += '<div class="sub-title">';
-  card += '<span class="sub-badge" style="background:#1a0a2e;border-color:#6a3a9a;color:#c07ae0">Rudra-Shiva</span>';
-  card += '<span class="sub-label">Inițiere / Initiation</span>';
-  card += '</div>';
-  card += '<div style="display:flex;align-items:center;gap:10px">';
-  if (subscribed) {
-    card += '<span class="sub-status" style="background:#2a1040;color:#c07ae0;border:1px solid #7a3aaa">Înscris</span>';
-  } else {
-    card += '<span class="sub-status" style="background:#2a2200;color:#d4a017;border:1px solid #6a5000">Disponibil</span>';
-  }
-  card += '<span class="chevron">▶</span>';
-  card += '</div></div>';
-  card += '<div class="sub-body" id="rudraBody">';
-  card += subscribed ? rudraConfirmHTML(loc) : rudraFormHTML();
-  card += '</div></div>';
-  return card;
-}
-
 async function rudraSubscribe(loc) {
   var f = student && student.fields || {};
   var email = (f.email || '').toLowerCase();
-  var name = f.name || '';
   var btns = document.querySelectorAll('#rudraBody button');
   btns.forEach(function(b){ b.disabled = true; b.style.opacity = '.5'; });
   try {
-    var res = await fetch(PROXY + '?action=rudra_subscribe', {
+    var res = await fetch(PROXY + '?action=rudra_set_location', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: email, name: name, location: loc})
+      body: JSON.stringify({email: email, location: loc})
     }).then(function(r){ return r.json(); });
     if (res.ok) {
-      rudraInitStatus = {subscribed: true, location: loc};
+      var locDisplay = lang === 'ro'
+        ? (loc === 'Cluj' ? 'Cluj' : 'București')
+        : (loc === 'Cluj' ? 'Cluj' : 'Bucharest');
       var body = document.getElementById('rudraBody');
-      if (body) body.innerHTML = rudraConfirmHTML(loc);
+      if (body) body.innerHTML = rudraConfirmHTML(locDisplay);
     } else {
       btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
     }
@@ -417,14 +534,16 @@ async function rudraSubscribe(loc) {
     btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
   }
 }
+
 function safeId(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }
 
 async function playSession(el) {
   var courseId = el.dataset.cid, label = el.dataset.sess, url = el.dataset.url;
   var box = document.getElementById('pb_' + safeId(courseId));
   if (!box) return;
+  var tr = t();
   box.style.display = 'block';
-  box.innerHTML = '<div class="player-loading">Loading ' + esc(label) + '…</div>';
+  box.innerHTML = '<div class="player-loading">' + tr.loading + esc(label) + '…</div>';
   try {
     var res = await fetch(PROXY + '?action=vimeo_play', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -434,12 +553,12 @@ async function playSession(el) {
     var sid = safeId(courseId);
     box.innerHTML =
       '<div class="player-pass">' +
-        '<span>Password:</span>' +
+        '<span>' + tr.password + '</span>' +
         '<strong id="vpass_' + sid + '">' + esc(res.password) + '</strong>' +
-        '<button class="copy-btn" onclick="copyPass(\'' + sid + '\')">Copy</button>' +
+        '<button class="copy-btn" onclick="copyPass(\'' + sid + '\')">' + tr.copy + '</button>' +
       '</div>' +
       '<div class="player-embed">' + res.embed + '</div>';
-  } catch(e) { box.innerHTML = '<div class="player-err">Network error</div>'; }
+  } catch(e) { box.innerHTML = '<div class="player-err">' + tr.networkError + '</div>'; }
 }
 
 async function copyPass(sid) {
@@ -480,30 +599,32 @@ function setContactMsg(text, ok) {
 }
 
 async function sendContactEmail() {
+  var tr = t();
   var subject = document.getElementById('contactSubject').value.trim();
   var message = document.getElementById('contactMessage').value.trim();
-  if (!subject || !message) { setContactMsg('Fill in subject and message', false); return; }
+  if (!subject || !message) { setContactMsg(tr.fillSubjectMessage, false); return; }
   var f = student && student.fields || {};
   var btn = document.getElementById('contactSend');
   btn.disabled = true;
-  setContactMsg('Sending…', true);
+  setContactMsg(tr.sending, true);
   try {
     var res = await fetch(PROXY + '?action=sendemail', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({subject: subject, message: message, replyTo: f.email || '', name: f.name || ''})
     }).then(function(r){return r.json();});
     if (res.ok) {
-      setContactMsg('Message sent!', true);
+      setContactMsg(tr.messageSent, true);
       document.getElementById('contactSubject').value = '';
       document.getElementById('contactMessage').value = '';
     } else {
-      setContactMsg(res.error || 'Failed to send', false);
+      setContactMsg(res.error || tr.failedToSend, false);
     }
-  } catch(e) { setContactMsg('Network error', false); }
+  } catch(e) { setContactMsg(tr.networkError, false); }
   btn.disabled = false;
 }
 
 (function(){
+  applyLang();
   try {
     var cached = sessionStorage.getItem('student');
     if (!cached) { window.location.href = BASE + 'login.html'; return; }

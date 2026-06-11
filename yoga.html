@@ -104,6 +104,8 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 .popup-frame{width:100%;height:100%;border:none;display:block}
 .ks-badge{background:#0d2040!important;border-color:#2a5a9a!important;color:#5ab0e0!important}
 .ks-badge:hover{border-color:#5ab0e0!important;background:#162c50!important}
+.mm-badge{background:#1a0a2e!important;border-color:#6a3a9a!important;color:#c07ae0!important}
+.mm-badge:hover{border-color:#c07ae0!important;background:#2a1040!important}
 </style>
 </head>
 <body>
@@ -111,7 +113,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 
 <div class="nav-bar">
   <button type="button" class="nav-btn nb-logout" onclick="adminLogout()">Logout</button>
-  <button type="button" class="nav-btn" onclick="location.href='mm_initiation.html'">MM Initiation</button>
+
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
@@ -150,6 +152,13 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
     <input id="afName" class="fi" placeholder="Name" style="width:180px;display:inline-block">
     <input id="afEmail" class="fi" placeholder="Email" style="width:220px;display:inline-block">
     <input id="afGroup" class="fi" placeholder="Group # (e.g. 6)" style="width:130px;display:inline-block">
+    <select id="afStatus" style="background:#1a1a1a;color:#d4a017;border:1px solid #333;border-radius:5px;font-size:14px;padding:4px 8px;font-family:inherit;outline:none">
+      <option value="">— Empty</option>
+      <option value="P">P  Paid</option>
+      <option value="F">F  Full</option>
+      <option value="G">G  Free</option>
+      <option value="S">S  Stop</option>
+    </select>
     <button class="abtn" onclick="saveAddRow()">Save</button>
     <button class="abtn" onclick="cancelAddForm()" style="opacity:.7">Cancel</button>
   </div>
@@ -282,6 +291,7 @@ function buildCourseHeader(){
     return '<span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>';
   }).join('');
   badges+='<span class="cbadge ks-badge" onclick="location.href=\'ks26.html\'">KS2026<span class="tip">Kashmir Shaivism Retreat 2026</span></span>';
+  badges+='<span class="cbadge mm-badge" onclick="location.href=\'mm_initiation.html\'">MM Init<span class="tip">MM Initiation</span></span>';
   var groups='';
   if(expandedCourse){
     var co=courses.find(function(x){return x.id===expandedCourse;});
@@ -517,15 +527,31 @@ function cancelAddForm(){
   document.getElementById('afName').value='';
   document.getElementById('afEmail').value='';
   document.getElementById('afGroup').value='';
+  document.getElementById('afStatus').value='';
 }
 async function saveAddRow(){
   var name=document.getElementById('afName').value.trim();
-  var email=document.getElementById('afEmail').value.trim();
+  var email=document.getElementById('afEmail').value.trim().toLowerCase();
   var gnum=document.getElementById('afGroup').value.trim();
   if(!name){alert('Name is required');return;}
   if(!email){alert('Email is required');return;}
+  var status=document.getElementById('afStatus').value;
+  var existing=rows.find(function(r){return (r.email||'').toLowerCase()===email;});
+  if(existing){
+    if(existing.subscriptions[activeCourse]){
+      if(!confirm('Student already has '+activeCourse+'. Overwrite that subscription?'))return;
+    }
+    existing.subscriptions[activeCourse]={next:status,curr:'',G:gnum};
+    sy('Updating…');
+    try{
+      await post('update',existing.recordId,{[FS.SUBS]:JSON.stringify(existing.subscriptions),[FS.NOTE]:existing.note||''});
+      sy('Updated ✓');setTimeout(function(){sy('');},2000);
+      saveCache();cancelAddForm();render();
+    }catch(e){sy('Update error');}
+    return;
+  }
   var subs={};
-  subs[activeCourse]={next:'',curr:'',G:gnum};
+  subs[activeCourse]={next:status,curr:'',G:gnum};
   sy('Creating…');
   try{
     var res=await post('create',null,{[FS.EMAIL]:email,[FS.NAME]:name,[FS.SUBS]:JSON.stringify(subs),[FS.NOTE]:''});
