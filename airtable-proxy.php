@@ -827,11 +827,13 @@ switch ($action) {
         for ($i=0;$i<count($urows);$i++) {
             if (strtolower(trim($urows[$i][1]??''))===$uem && strtolower(trim($urows[$i][3]??''))===$uses) { $uidx=$i; break; }
         }
+        $uru = str_replace(["\n","\r"], '', trim($body['rudra'] ?? ''));
         if ($uidx>=0) {
             if ($unm) $urows[$uidx][0]=$unm; if ($utax) $urows[$uidx][2]=$utax; if ($unto) $urows[$uidx][4]=$unto;
+            if ($uru !== '') $urows[$uidx][5]=$uru;
             $uact='updated';
-        } else { $urows[]=[$unm,$uem,$utax,$uses,$unto]; $uact='created'; }
-        $ufh=fopen($uf,'w'); fputcsv($ufh,['name','email','tax','session','notes']);
+        } else { $urows[]=[$unm,$uem,$utax,$uses,$unto,$uru]; $uact='created'; }
+        $ufh=fopen($uf,'w'); fputcsv($ufh,['name','email','tax','session','notes','rudra']);
         foreach($urows as $ur) fputcsv($ufh,$ur); fclose($ufh);
         echo json_encode(['ok'=>true,'action'=>$uact]);
         break;
@@ -849,52 +851,34 @@ switch ($action) {
         $er = []; $ei = -1;
         if (($efh = fopen($ef,'r')) !== false) { fgetcsv($efh); while (($row=fgetcsv($efh))!==false) $er[]=$row; fclose($efh); }
         for ($i=0;$i<count($er);$i++) { if (strtolower(trim($er[$i][1]??''))===$oe) { $ei=$i; break; } }
+        $nru = str_replace(["\n","\r"], '', trim($body['rudra'] ?? "\x00"));
         if ($ei < 0) { echo json_encode(['error' => 'Record not found']); break; }
         if ($nm  !== '') $er[$ei][0] = $nm;
         if ($ne  !== '') $er[$ei][1] = $ne;
         $er[$ei][2] = $nt;
         if ($nse !== '') $er[$ei][3] = $nse;
         $er[$ei][4] = $nno;
-        $efh = fopen($ef,'w'); fputcsv($efh,['name','email','tax','session','notes']);
+        if ($nru !== "\x00") $er[$ei][5] = $nru;
+        $efh = fopen($ef,'w'); fputcsv($efh,['name','email','tax','session','notes','rudra']);
         foreach($er as $row) fputcsv($efh,$row); fclose($efh);
         echo json_encode(['ok' => true]);
         break;
 
-    case 'rudra_status':
-        $re = strtolower(trim($_GET['email'] ?? ''));
-        if (!$re) { echo json_encode(['error' => 'email required']); break; }
-        $rf = __DIR__ . '/rudra_initiation.csv';
-        if (!file_exists($rf)) { echo json_encode(['subscribed' => false]); break; }
-        $rfound = false; $rloc = '';
-        if (($rfh = fopen($rf,'r')) !== false) {
-            fgetcsv($rfh);
-            while (($rr = fgetcsv($rfh)) !== false) {
-                if (strtolower(trim($rr[0]??'')) === $re) { $rfound = true; $rloc = trim($rr[2]??''); break; }
-            }
-            fclose($rfh);
-        }
-        echo json_encode(['subscribed' => $rfound, 'location' => $rloc]);
-        break;
-
-    case 'rudra_subscribe':
-        $rsem  = strtolower(str_replace(["\n","\r"], '', trim($body['email']    ?? '')));
-        $rsnm  = str_replace(["\n","\r"], '', trim($body['name']     ?? ''));
-        $rsloc = str_replace(["\n","\r"], '', trim($body['location'] ?? ''));
-        if (!$rsem) { echo json_encode(['error' => 'email required']); break; }
-        if (!in_array($rsloc, ['Bucuresti', 'Cluj'])) { echo json_encode(['error' => 'Invalid location']); break; }
-        $rsf = __DIR__ . '/rudra_initiation.csv';
-        $rsalready = false;
-        if (file_exists($rsf) && ($rsfh = fopen($rsf,'r')) !== false) {
-            fgetcsv($rsfh);
-            while (($rsr = fgetcsv($rsfh)) !== false) {
-                if (strtolower(trim($rsr[0]??'')) === $rsem) { $rsalready = true; break; }
-            }
-            fclose($rsfh);
-        }
-        if ($rsalready) { echo json_encode(['ok' => true, 'location' => $rsloc]); break; }
-        if (!file_exists($rsf)) file_put_contents($rsf, "email,name,location\n");
-        $rsfh = fopen($rsf,'a'); fputcsv($rsfh, [$rsem, $rsnm, $rsloc]); fclose($rsfh);
-        echo json_encode(['ok' => true, 'location' => $rsloc]);
+    case 'rudra_set_location':
+        $rle = strtolower(str_replace(["\n","\r"], '', trim($body['email']    ?? '')));
+        $rll = str_replace(["\n","\r"], '', trim($body['location'] ?? ''));
+        if (!$rle) { echo json_encode(['error' => 'email required']); break; }
+        if (!in_array($rll, ['Bucuresti', 'Cluj', 'Costinesti', ''])) { echo json_encode(['error' => 'Invalid location']); break; }
+        $rlf = __DIR__ . '/ks26.csv';
+        if (!file_exists($rlf)) { echo json_encode(['error' => 'Not enrolled in KS26']); break; }
+        $rlrows = []; $rlidx = -1;
+        if (($rlfh = fopen($rlf, 'r')) !== false) { fgetcsv($rlfh); while (($rlr = fgetcsv($rlfh)) !== false) $rlrows[] = $rlr; fclose($rlfh); }
+        for ($i = 0; $i < count($rlrows); $i++) { if (strtolower(trim($rlrows[$i][1] ?? '')) === $rle) { $rlidx = $i; break; } }
+        if ($rlidx < 0) { echo json_encode(['error' => 'Not enrolled in KS26']); break; }
+        $rlrows[$rlidx][5] = $rll;
+        $rlfh = fopen($rlf, 'w'); fputcsv($rlfh, ['name','email','tax','session','notes','rudra']);
+        foreach ($rlrows as $rlr) fputcsv($rlfh, $rlr); fclose($rlfh);
+        echo json_encode(['ok' => true, 'location' => $rll]);
         break;
 
     case 'email_flag':
@@ -917,7 +901,7 @@ switch ($action) {
             fgetcsv($fh); // skip header
             while (($row = fgetcsv($fh)) !== false) {
                 if (count($row) < 4) continue;
-                $rows[] = ['name' => trim($row[0]), 'email' => trim($row[1]), 'tax' => trim($row[2]), 'session' => trim($row[3]), 'notes' => trim($row[4] ?? '')];
+                $rows[] = ['name' => trim($row[0]), 'email' => trim($row[1]), 'tax' => trim($row[2]), 'session' => trim($row[3]), 'notes' => trim($row[4] ?? ''), 'rudra' => trim($row[5] ?? '')];
             }
             fclose($fh);
         }
@@ -930,12 +914,13 @@ switch ($action) {
         $tax     = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
         $session = str_replace(["\n","\r"], '', trim($body['session'] ?? 'live'));
         $notes   = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
+        $rudra   = str_replace(["\n","\r"], '', trim($body['rudra']   ?? ''));
         if (!$name && !$email) { echo json_encode(['error' => 'Name or email required']); break; }
         $f = __DIR__ . '/ks26.csv';
-        if (!file_exists($f)) file_put_contents($f, "name,email,tax,session,notes\n");
+        if (!file_exists($f)) file_put_contents($f, "name,email,tax,session,notes,rudra\n");
         $fh = fopen($f, 'a');
         if (!$fh) { echo json_encode(['error' => 'Write failed']); break; }
-        fputcsv($fh, [$name, $email, $tax, $session, $notes]);
+        fputcsv($fh, [$name, $email, $tax, $session, $notes, $rudra]);
         fclose($fh);
         echo json_encode(['ok' => true]);
         break;
@@ -976,9 +961,11 @@ switch ($action) {
             while (($row = fgetcsv($fh)) !== false) {
                 $email = strtolower(trim($row[1] ?? ''));
                 $sess  = strtolower(trim($row[3] ?? 'live')) ?: 'live';
+                $rudra = trim($row[5] ?? '');
                 if ($email && strpos($email, '@') !== false) {
-                    if (!isset($enrollments[$email])) $enrollments[$email] = [];
-                    if (!in_array($sess, $enrollments[$email])) $enrollments[$email][] = $sess;
+                    if (!isset($enrollments[$email])) $enrollments[$email] = ['sessions' => [], 'rudra' => ''];
+                    if (!in_array($sess, $enrollments[$email]['sessions'])) $enrollments[$email]['sessions'][] = $sess;
+                    if ($rudra) $enrollments[$email]['rudra'] = $rudra;
                 }
             }
             fclose($fh);

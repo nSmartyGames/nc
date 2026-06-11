@@ -45,13 +45,6 @@ td[data-field]:hover{background:#0d2a40}
 .add-row input,.add-row select{background:#080f1a;color:#c0d8ec;border:1px solid #1e4a6a;border-radius:4px;padding:5px 9px;font-size:13px;outline:none;font-family:inherit}
 .add-row input:focus,.add-row select:focus{border-color:#5ab0e0}
 select option{background:#0d1e30}
-.rudra-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:flex-start;justify-content:center;padding-top:60px}
-.rudra-overlay.open{display:flex}
-.rudra-modal{background:#0d1220;border:1px solid #4a2a7a;border-radius:10px;width:min(700px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
-.rudra-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #3a1a5a;flex-shrink:0}
-.rudra-modal-body{overflow-y:auto;padding:14px 16px}
-.rudra-close{background:none;border:none;color:#6a3a9a;font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
-.rudra-close:hover{color:#c07ae0}
 </style>
 </head>
 <body>
@@ -69,7 +62,6 @@ select option{background:#0d1e30}
   <button class="tab" id="tabR" onclick="setTab('replay')">Replay <span id="cntR"></span></button>
   <span class="stat-line" id="statLine"></span>
   <button class="btn" onclick="copyPaid()" style="margin-left:auto">Copy paid emails</button>
-  <button class="btn" id="btnRudra" onclick="toggleRudra()" style="background:#1a0a2e;border-color:#6a3a9a;color:#c07ae0">📿 Rudra <span id="rudraCount" style="color:#a07ae0"></span></button>
 </div>
 
 <div class="add-section" id="addSection">
@@ -110,32 +102,12 @@ select option{background:#0d1e30}
       <th>Email</th>
       <th>Tax</th>
       <th>Notes</th>
+      <th>Rudra</th>
     </tr>
   </thead>
   <tbody id="tbody"></tbody>
 </table>
 
-<div id="rudraSection" class="rudra-overlay" onclick="if(event.target===this)toggleRudra()">
-  <div class="rudra-modal">
-    <div class="rudra-modal-head">
-      <span style="color:#c07ae0;font-size:14px;font-weight:700">📿 Rudra Initiation — Subscribers</span>
-      <button class="rudra-close" onclick="toggleRudra()">✕</button>
-    </div>
-    <div class="rudra-modal-body">
-      <table>
-        <thead>
-          <tr>
-            <th class="num">#</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody id="rudraTbody"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
 
 <script>
 var PROXY = /^\/app(\/|$)/.test(location.pathname)
@@ -197,14 +169,16 @@ function render() {
   var html = '';
   vis.forEach(function(r, i) {
     var idx = data.indexOf(r);
+    var rudraCell = r.rudra ? '<span style="color:#4caf50;font-weight:700;font-size:13px">'+esc(r.rudra)+'</span>' : '<span style="opacity:.3">—</span>';
     html += '<tr data-idx="'+idx+'"><td class="num">'+(i+1)+'</td>'
           + '<td data-field="name">'+esc(r.name)+'</td>'
           + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+'</td>'
           + '<td data-field="tax">'+txBadge(r.tax)+'</td>'
-          + '<td data-field="notes" class="note-cell">'+esc(r.notes)+'</td></tr>';
+          + '<td data-field="notes" class="note-cell">'+esc(r.notes)+'</td>'
+          + '<td data-field="rudra" style="text-align:center;cursor:pointer">'+rudraCell+'</td></tr>';
   });
   document.getElementById('tbody').innerHTML = html ||
-    '<tr><td colspan="5" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
+    '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
 }
 
 function copyPaid() {
@@ -238,7 +212,7 @@ async function addRow() {
     });
     var j = await res.json();
     if (j.error) { sy('Error: '+j.error); return; }
-    data.push({name,email,tax,session,notes});
+    data.push({name,email,tax,session,notes,rudra:''});
     document.getElementById('aN').value = '';
     document.getElementById('aE').value = '';
     document.getElementById('aNote').value = '';
@@ -262,18 +236,21 @@ async function load() {
   } catch(e) { sy('Load failed: '+e.message); }
 }
 
-var TAX_OPTS = ['505','840','1050','630','G','pending',''];
+var TAX_OPTS   = ['505','840','1050','630','G','pending',''];
+var RUDRA_OPTS = ['Cluj','Bucuresti','Costinesti',''];
 
 function makeEditable(td, r, field) {
   if (td.querySelector('input,select')) return;
   var origEmail = r.email;
   var oldVal = r[field];
   var el;
-  if (field === 'tax') {
+  if (field === 'tax' || field === 'rudra') {
+    var opts = field === 'tax' ? TAX_OPTS : RUDRA_OPTS;
     el = document.createElement('select');
-    TAX_OPTS.forEach(function(v) {
+    opts.forEach(function(v) {
       var o = document.createElement('option');
-      o.value = v; o.textContent = v || '— unpaid';
+      o.value = v;
+      o.textContent = v || (field === 'tax' ? '— unpaid' : '—');
       if (v === oldVal) o.selected = true;
       el.appendChild(o);
     });
@@ -299,7 +276,7 @@ function makeEditable(td, r, field) {
       body: JSON.stringify({
         orig_email: origEmail,
         name: r.name, email: r.email, tax: r.tax,
-        session: r.session, notes: r.notes
+        session: r.session, notes: r.notes, rudra: r.rudra || ''
       })
     }).then(function(res){ return res.json(); }).then(function(j){
       if (j.error) { sy('Save error: ' + j.error); r[field] = oldVal; render(); }
@@ -322,69 +299,6 @@ document.getElementById('tbody').addEventListener('click', function(e) {
   if (r) makeEditable(td, r, td.getAttribute('data-field'));
 });
 
-var rudraData = null, rudraOpen = false;
-
-function parseCSV(text) {
-  var rows = [], lines = text.replace(/\r/g,'').split('\n');
-  if (!lines.length) return rows;
-  function splitLine(line) {
-    var cols = [], cur = '', inQ = false;
-    for (var i = 0; i < line.length; i++) {
-      var c = line[i];
-      if (c === '"') { inQ = !inQ; }
-      else if (c === ',' && !inQ) { cols.push(cur); cur = ''; }
-      else cur += c;
-    }
-    cols.push(cur);
-    return cols.map(function(s){ return s.trim(); });
-  }
-  var headers = splitLine(lines[0]);
-  for (var i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-    var vals = splitLine(lines[i]);
-    var obj = {};
-    headers.forEach(function(h, j){ obj[h] = vals[j] || ''; });
-    rows.push(obj);
-  }
-  return rows;
-}
-
-function renderRudra() {
-  if (!rudraData) return;
-  var html = '';
-  rudraData.forEach(function(r, i) {
-    var name  = r.Name  || r.name  || '';
-    var email = r.Email || r.email || '';
-    var notes = r.Notes || r.notes || '';
-    html += '<tr>'
-          + '<td class="num">'+(i+1)+'</td>'
-          + '<td>'+esc(name)+'</td>'
-          + '<td style="opacity:.8;font-size:13px">'+esc(email)+'</td>'
-          + '<td class="note-cell">'+esc(notes)+'</td>'
-          + '</tr>';
-  });
-  document.getElementById('rudraTbody').innerHTML = html ||
-    '<tr><td colspan="4" style="text-align:center;padding:20px;color:#3a1a5a">No subscribers yet</td></tr>';
-  document.getElementById('rudraCount').textContent = rudraData.length ? '('+rudraData.length+')' : '';
-}
-
-async function toggleRudra() {
-  rudraOpen = !rudraOpen;
-  document.getElementById('rudraSection').classList.toggle('open', rudraOpen);
-  var btn = document.getElementById('btnRudra');
-  btn.style.background = rudraOpen ? '#2a1040' : '#1a0a2e';
-  btn.style.borderColor = rudraOpen ? '#9a50d0' : '#6a3a9a';
-  if (rudraOpen && !rudraData) {
-    sy('Loading Rudra list…');
-    try {
-      var res = await fetch('rudra_initiation.csv?_=' + Date.now());
-      var text = await res.text();
-      rudraData = parseCSV(text);
-      renderRudra();
-      sy('');
-    } catch(e) { sy('Error loading CSV: '+e.message); }
-  }
-}
 
 load();
 </script>
