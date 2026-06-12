@@ -908,6 +908,23 @@ switch ($action) {
         echo json_encode(['rows' => $rows]);
         break;
 
+    case 'ks26_delete':
+        $de = strtolower(str_replace(["\n","\r"], '', trim($body['email'] ?? '')));
+        if (!$de) { echo json_encode(['error' => 'email required']); break; }
+        $df = __DIR__ . '/ks26.csv';
+        if (!file_exists($df)) { echo json_encode(['error' => 'File not found']); break; }
+        $drows = []; $dfound = false;
+        if (($dfh = fopen($df,'r')) !== false) { fgetcsv($dfh); while (($dr=fgetcsv($dfh))!==false) $drows[]=$dr; fclose($dfh); }
+        $drows = array_filter($drows, function($r) use ($de, &$dfound) {
+            if (strtolower(trim($r[1]??'')) === $de) { $dfound = true; return false; }
+            return true;
+        });
+        if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
+        $dfh = fopen($df,'w'); fputcsv($dfh,['name','email','tax','session','notes','rudra']);
+        foreach($drows as $dr) fputcsv($dfh,$dr); fclose($dfh);
+        echo json_encode(['ok' => true]);
+        break;
+
     case 'ks26_append':
         $name    = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
         $email   = str_replace(["\n","\r"], '', trim($body['email']   ?? ''));

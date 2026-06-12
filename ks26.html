@@ -97,6 +97,7 @@ select option{background:#0d1e30}
 <table id="mainTable">
   <thead>
     <tr>
+      <th style="width:36px"></th>
       <th class="num">#</th>
       <th>Name</th>
       <th>Email</th>
@@ -170,7 +171,7 @@ function render() {
   vis.forEach(function(r, i) {
     var idx = data.indexOf(r);
     var rudraCell = r.rudra ? '<span style="color:#4caf50;font-weight:700;font-size:13px">'+esc(r.rudra)+'</span>' : '<span style="opacity:.3">—</span>';
-    html += '<tr data-idx="'+idx+'"><td class="num">'+(i+1)+'</td>'
+    html += '<tr data-idx="'+idx+'"><td style="text-align:center;padding:4px"><button onclick="deleteRow('+idx+',event)" style="background:none;border:none;color:#4a2a2a;font-size:15px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1" onmouseover="this.style.color=\'#e05050\'" onmouseout="this.style.color=\'#4a2a2a\'">✕</button></td><td class="num">'+(i+1)+'</td>'
           + '<td data-field="name">'+esc(r.name)+'</td>'
           + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+'</td>'
           + '<td data-field="tax">'+txBadge(r.tax)+'</td>'
@@ -178,7 +179,7 @@ function render() {
           + '<td data-field="rudra" style="text-align:center;cursor:pointer">'+rudraCell+'</td></tr>';
   });
   document.getElementById('tbody').innerHTML = html ||
-    '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
+    '<tr><td colspan="7" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
 }
 
 function copyPaid() {
@@ -299,6 +300,25 @@ document.getElementById('tbody').addEventListener('click', function(e) {
   if (r) makeEditable(td, r, td.getAttribute('data-field'));
 });
 
+
+async function deleteRow(idx, e) {
+  e.stopPropagation();
+  var r = data[idx];
+  if (!r) return;
+  if (!confirm('Delete ' + (r.name || r.email) + '?')) return;
+  try {
+    var res = await fetch(PROXY+'?action=ks26_delete', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: r.email})
+    });
+    var j = await res.json();
+    if (j.error) { sy('Error: '+j.error); return; }
+    data.splice(idx, 1);
+    render();
+    sy('Deleted: '+(r.name||r.email));
+    setTimeout(function(){ sy(''); }, 3000);
+  } catch(e) { sy('Error: '+e.message); }
+}
 
 load();
 </script>

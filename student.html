@@ -216,7 +216,8 @@ var T = {
     rudraThankYou: '✓ Thank you for subscribing!',
     rudraBucharest: 'Bucharest',
     rudraBucharestBtn: '📍 Bucharest',
-    rudraClujBtn: '📍 Cluj'
+    rudraClujBtn: '📍 Cluj',
+    rudraDeadlinePassed: 'Registration closed on July 3, 2026.'
   },
   ro: {
     logout: 'Deconectare',
@@ -265,7 +266,8 @@ var T = {
     rudraThankYou: '✓ Vă mulțumim pentru înscriere!',
     rudraBucharest: 'București',
     rudraBucharestBtn: '📍 București',
-    rudraClujBtn: '📍 Cluj'
+    rudraClujBtn: '📍 Cluj',
+    rudraDeadlinePassed: 'Înscrierea s-a închis pe 3 iulie 2026.'
   }
 };
 
@@ -501,10 +503,15 @@ function rudraConfirmHTML(locDisplay) {
 }
 function rudraFormHTML() {
   var tr = t();
-  return '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px">' +
+  var base = '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px">' +
     '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
     '<span style="color:#ccc">' + tr.rudraDesc + '</span>' +
-    '</div>' +
+    '</div>';
+  var deadline = new Date('2026-07-04T00:00:00');
+  if (new Date() >= deadline) {
+    return base + '<div style="font-size:13px;color:#aaa;font-style:italic">' + tr.rudraDeadlinePassed + '</div>';
+  }
+  return base +
     '<div style="font-size:12px;color:#aaa;margin-bottom:10px">' + tr.rudraChooseLocation + '</div>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
     '<button onclick="rudraSubscribe(\'Bucuresti\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">' + tr.rudraBucharestBtn + '</button>' +
