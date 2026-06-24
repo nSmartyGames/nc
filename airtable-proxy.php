@@ -354,8 +354,8 @@ switch ($action) {
         ));
         // Send email via wp_mail or PHP mail
         $name = $found['fields']['name'] ?? 'Student';
-        $subject = '[RO] Codul tău de acces';
-        $message = "Salut $name,\n\nCodul tău de acces este: $code\n\nFolosește-l pentru a te autentifica la: https://www.nicolaecatrina.com/app/\n\nCodul este valabil până când soliciți unul nou.";
+        $subject = 'Codul tău de acces / Your access code';
+        $message = "Salut $name,\n\nCodul tău de acces este: $code\n\nFolosește-l pentru a te autentifica la: https://www.nicolaecatrina.com/app/\n\nCodul este valabil până când soliciți unul nou.\n\n---\n\nHi $name,\n\nYour access code is: $code\n\nUse it to log in at: https://www.nicolaecatrina.com/app/\n\nThe code remains valid until you request a new one.";
         $headers = 'From: noreply@nicolaecatrina.com';
         wp_mail($email, $subject, $message, $headers);
         echo json_encode(array('ok' => true, 'message' => 'Code sent to your email'));
@@ -699,9 +699,22 @@ switch ($action) {
         $email = str_replace([',',"\n","\r"], '', trim($body['email'] ?? ''));
         $part  = str_replace([',',"\n","\r"], '', trim($body['part']  ?? 'new'));
         if (!$name) { echo json_encode(['error' => 'Name required']); break; }
-        $csv_file = __DIR__ . '/mahamrityunjaya.csv';
+        $csv_file = __DIR__ . '/mm_initiation.csv';
         $line = $name . ',' . $email . ',' . $part . "\n";
         $ok = file_put_contents($csv_file, $line, FILE_APPEND | LOCK_EX);
+        echo $ok !== false ? json_encode(['ok' => true]) : json_encode(['error' => 'Write failed']);
+        break;
+
+    case 'csv_delete':
+        $name  = str_replace([',',"\n","\r"], '', trim($body['name']  ?? ''));
+        $email = str_replace([',',"\n","\r"], '', trim($body['email'] ?? ''));
+        $part  = str_replace([',',"\n","\r"], '', trim($body['part']  ?? ''));
+        if (!$name) { echo json_encode(['error' => 'Name required']); break; }
+        $csv_file = __DIR__ . '/mm_initiation.csv';
+        $lines = file($csv_file, FILE_IGNORE_NEW_LINES);
+        $target = $name . ',' . $email . ',' . $part;
+        $filtered = array_filter($lines, function($l) use ($target) { return trim($l) !== $target; });
+        $ok = file_put_contents($csv_file, implode("\n", $filtered) . "\n", LOCK_EX);
         echo $ok !== false ? json_encode(['ok' => true]) : json_encode(['error' => 'Write failed']);
         break;
 
@@ -767,6 +780,37 @@ switch ($action) {
         }
         imap_close($mbox);
         echo json_encode(['ok' => true, 'total' => count($nums), 'cats' => $cats]);
+        break;
+
+    case 'email_search':
+        $kw   = trim($body['keyword'] ?? '');
+        $max  = intval($body['max'] ?? 50);
+        if (!$kw) { echo json_encode(['error' => 'keyword required']); break; }
+        $mbox = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, 0, 1);
+        if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
+        $since = trim($body['since'] ?? '');
+        $criteria = 'SINCE "01-Jun-2026" TEXT "' . addslashes($kw) . '"';
+        if ($since) $criteria = 'SINCE "' . addslashes($since) . '" TEXT "' . addslashes($kw) . '"';
+        $nums = imap_search($mbox, $criteria) ?: [];
+        rsort($nums);
+        $nums = array_slice($nums, 0, $max);
+        $results = [];
+        foreach ($nums as $num) {
+            $hdr  = imap_headerinfo($mbox, $num);
+            $from = $hdr->from[0] ?? null;
+            $repl = $hdr->reply_to[0] ?? null;
+            $fe   = $from ? ($from->mailbox . '@' . ($from->host ?? '')) : '';
+            $re   = $repl ? ($repl->mailbox . '@' . ($repl->host ?? '')) : $fe;
+            $fn   = $from ? ncDecodeHeader($from->personal ?? '') : '';
+            $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
+            $dstr = date('d M Y, H:i', strtotime($hdr->date ?? 'now'));
+            $struct = imap_fetchstructure($mbox, $num);
+            $btxt = mb_substr(trim(ncGetBody($mbox, $num, $struct)), 0, 800);
+            $results[] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe,
+                          'reply_to' => $re, 'subject' => $subj, 'date' => $dstr, 'body' => $btxt];
+        }
+        imap_close($mbox);
+        echo json_encode(['ok' => true, 'total' => count($nums), 'results' => $results]);
         break;
 
     case 'send_admin':

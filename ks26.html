@@ -219,6 +219,8 @@ async function addRow() {
     document.getElementById('aNote').value = '';
     document.getElementById('addSection').classList.remove('open');
     document.getElementById('btnAdd').textContent = '+ Add subscriber';
+    document.getElementById('sN').value = '';
+    document.getElementById('sE').value = email || name;
     setTab(session);
     sy('Added: '+name);
     setTimeout(function(){ sy(''); }, 3000);

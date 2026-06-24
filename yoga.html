@@ -16,6 +16,9 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
 .gbt{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:7px;padding:5px 14px;font-size:15px;cursor:pointer;font-weight:500}
 .gbt:hover{border-color:#d4a017}
 .gbt.on{background:#3a2e00;border-color:#d4a017;color:#f0c030}
+.gbt-red{background:#2a0a0a;border-color:#7a2a2a;color:#e07070}
+.gbt-red:hover{border-color:#e07070}
+.gbt-red.on{background:#4a1010;border-color:#e07070;color:#ff9090}
 .bar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .abtn{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:5px 14px;font-size:15px;cursor:pointer}
 .abtn:hover{border-color:#d4a017}
@@ -297,7 +300,8 @@ function buildCourseHeader(){
     var co=courses.find(function(x){return x.id===expandedCourse;});
     if(co) groups=(co.groups||['All']).map(function(g){
       var on=(activeCourse===co.id&&activeGroup===g)?'on':'';
-      return '<button class="gbt '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
+      var red=(co.id==='YTT-M1'&&g==='G6')?'gbt-red':'';
+      return '<button class="gbt '+red+' '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
     }).join('');
   }
   c.innerHTML='<div class="course-row">'+badges+'</div>'+(groups?'<div class="course-row">'+groups+'</div>':'');

@@ -91,6 +91,8 @@ a:hover{text-decoration:underline}
 .popup-frame{width:100%;height:100%;border:none;display:block}
 .ks-join-link{display:inline-block;font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:12px;padding:3px 12px;text-decoration:none;font-weight:600}
 .ks-join-link:hover{background:#1e2a3a;text-decoration:none}
+.pay-now-btn{background:#2a2000;border:1px solid #7a5c00;color:#f0c030;border-radius:6px;padding:2px 10px;font-size:11px;font-family:inherit;cursor:pointer;font-weight:600}
+.pay-now-btn:hover{background:#3a3000;border-color:#d4a017}
 </style>
 </head>
 <body>
@@ -166,6 +168,14 @@ var ks2026Enrollments = {};
 
 var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
 
+var COURSE_PAY_URLS = {
+  'YTT-M1': 'https://nicolaecatrina.com/yoga-tantrica-tibetana-curs-online-modulul-1/',
+  'YTT-M2': 'https://nicolaecatrina.com/yoga-tantrica-tibetana-curs-online-modulul-2/',
+  'YTT-M3': 'https://nicolaecatrina.com/ytt-m3/',
+  'I Ching': 'https://nicolaecatrina.com/iching/',
+  'AL': 'https://nicolaecatrina.com/curs-de-initiere-in-misterele-traditiei-alchimice-universale/'
+};
+
 var lang = localStorage.getItem('lang') || 'ro';
 
 var T = {
@@ -188,6 +198,7 @@ var T = {
     statusPaid: 'Paid',
     statusFull: 'Full',
     statusStopped: 'Stopped',
+    payNow: 'Pay now',
     noSessions: 'No sessions available yet',
     noSubs: 'No active course subscription found',
     loading: 'Loading ',
@@ -203,9 +214,12 @@ var T = {
       return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
     },
     ksThankYou: 'Thank you for registering for the 2026 Kashmir Shaivism Retreat!',
-    ksStarting: '🗓 Starting June 25, 14:00 CEST',
-    ksZoomNote: '🔗 The Zoom platform connection link will be shown here a few days prior to the beginning of the live event.',
+    ksStarting: '🗓 Starting June 25, 14:30 CEST',
+    ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Join on Zoom</a>',
     ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
+    ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
+    ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
+    ksReplayUpload: 'On July 3rd, at 10:00 CEST, we will upload the link for watching the replay session.',
     rudraSection: 'Initiation',
     rudraEnrolled: 'Enrolled',
     rudraTitle: 'The initiation in the mantra of Rudra-Shiva',
@@ -238,6 +252,7 @@ var T = {
     statusPaid: 'Achitat',
     statusFull: 'Integral',
     statusStopped: 'Oprit',
+    payNow: 'Plătesc acum',
     noSessions: 'Nicio sesiune disponibilă',
     noSubs: 'Niciun abonament activ găsit',
     loading: 'Se încarcă ',
@@ -253,9 +268,12 @@ var T = {
       return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
     },
     ksThankYou: 'Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!',
-    ksStarting: '🗓 Începând cu 25 iunie, 14:00 CEST',
-    ksZoomNote: '🔗 Link-ul de conectare pe platforma Zoom va apărea aici cu câteva zile înainte de începerea evenimentului live.',
+    ksStarting: '🗓 Începând cu 25 iunie, 14:30 CEST',
+    ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Alătură-te pe Zoom</a>',
     ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
+    ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
+    ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
+    ksReplayUpload: 'Pe 3 iulie, la 10:00 CEST, vom încărca link-ul pentru vizionarea sesiunii de reluare.',
     rudraSection: 'Inițiere',
     rudraEnrolled: 'Înscris',
     rudraTitle: 'Inițierea în mantra lui Rudra-Șiva',
@@ -373,9 +391,9 @@ function showDashboard() {
   ksCard += '</div></div>';
   if (isKsEnrolled) {
     ksCard += '<div class="sub-body">';
-    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span><br><span style="font-size:12px;color:#888;line-height:1.6">' + tr.ksZoomNote + '</span></div>';
-    ksCard += '<div style="height:8px"></div>';
-    if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">' + tr.ksReplayNote + '</div>';
+    if (hasLive) ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span></div>';
+    if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:6px">' + tr.ksZoomNote + '</div>';
+    if (hasReplay) ksCard += '<div style="font-size:13px;color:#7ec850;margin-bottom:4px">✓ ' + tr.ksReplayWait + '</div><div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px">' + tr.ksReplayStart + '</div><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:6px">' + tr.ksReplayUpload + '</div>';
     ksCard += '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a">';
     ksCard += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     ksCard += '<span style="background:#1a0a2e;border:1px solid #6a3a9a;color:#c07ae0;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700">Rudra-Shiva</span>';
@@ -443,7 +461,14 @@ function showDashboard() {
     html += '</div>';
     html += '</div>';
     html += '<div class="sub-body">';
-    html += '<div class="month-info">' + currMonth + ': ' + statusLabel(currStatus) + ' · ' + nextMonth + ': ' + statusLabel(nextStatus) + '</div>';
+    var payUrl = COURSE_PAY_URLS[c.id];
+    var nextPart;
+    if (!nextStatus && payUrl) {
+      nextPart = '<button class="pay-now-btn" onclick="openPopup(\'' + esc(payUrl) + '\')">' + nextMonth + ': ' + tr.payNow + '</button>';
+    } else {
+      nextPart = nextMonth + ': ' + statusLabel(nextStatus);
+    }
+    html += '<div class="month-info">' + currMonth + ': ' + statusLabel(currStatus) + ' · ' + nextPart + '</div>';
 
     if (isPaid) {
       if (courseSessions.length > 0) {

@@ -20,7 +20,10 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
 .login-msg{font-size:11px;margin-top:10px;min-height:16px}
 .msg-ok{color:#7ec850}
 .msg-err{color:#e07070}
-.sendcode-section{margin-top:16px;border-top:1px solid #2a2a2a;padding-top:14px}
+.no-code-link{display:block;width:100%;text-align:center;margin-top:10px;font-size:11px;color:#5aa0d0;cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit}
+.no-code-link:hover{color:#7ec0e0}
+.sendcode-section{margin-bottom:16px;border-bottom:1px solid #2a2a2a;padding-bottom:14px;display:none}
+.sendcode-section.open{display:block}
 .sendcode-section p{font-size:11px;color:#666;margin-bottom:8px}
 .sendcode-row{display:flex;gap:6px}
 .sendcode-row input{flex:1;background:#111;border:1px solid #3a3a3a;border-radius:6px;color:#d4a017;font-size:12px;padding:7px 9px;outline:none;font-family:inherit}
@@ -36,6 +39,15 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
   <div class="logo">nicolaecatrina.com</div>
   <h2>Login</h2>
   <p>Introduceți codul de 5 cifre<br>Enter your 5-digit login code</p>
+  <button type="button" class="no-code-link" onclick="toggleSendCode()" style="margin:0 0 14px">Nu am codul! / Don't have a code!</button>
+  <div class="sendcode-section" id="sendcodeSection">
+    <p>Înregistrați un cod nou prin email:<br>Register a new code with your email:</p>
+    <div class="sendcode-row">
+      <input type="email" id="sendEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendCode()">
+      <button type="button" onclick="sendCode()">Send code</button>
+    </div>
+    <div class="sendcode-msg" id="sendMsg"></div>
+  </div>
   <div class="code-inputs" id="codeInputs">
     <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
     <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
@@ -45,14 +57,6 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
   </div>
   <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Login</button>
   <div class="login-msg" id="loginMsg"></div>
-  <div class="sendcode-section">
-    <p>Înregistrați un cod nou prin email:<br>Register a new code with your email:</p>
-    <div class="sendcode-row">
-      <input type="email" id="sendEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')sendCode()">
-      <button type="button" onclick="sendCode()">Send code</button>
-    </div>
-    <div class="sendcode-msg" id="sendMsg"></div>
-  </div>
 </div>
 <script>
 var PROXY = /^\/app(\/|$)/.test(location.pathname)
@@ -79,6 +83,9 @@ inputs.forEach(function(inp, i) {
   });
 });
 
+function toggleSendCode() {
+  document.getElementById('sendcodeSection').classList.toggle('open');
+}
 function getCode() { var c=''; inputs.forEach(function(i){c+=i.value;}); return c; }
 function checkCode() { document.getElementById('loginBtn').disabled = getCode().length !== 5; }
 function msg(text, ok) {

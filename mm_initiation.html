@@ -149,14 +149,14 @@ function checkEligibility(email, name) {
   }
   var p1 = has('Part 1'), p2 = has('Part 2');
   var ia = has('Iasi'),   cl = has('Cluj');
-  if (!p1 && !p2) return { eligible: false, reason: 'no Part 1 or Part 2' };
+  if (!p1 && !p2) return { eligible: false, reason: 'nici o aprof.' };
   if (p1 && p2) {
     if (ia && cl) return { eligible: false, reason: 'both initiations done' };
-    var r12 = (!ia && !cl) ? 'no initiation yet' : '1 initiation done';
+    var r12 = (!ia && !cl) ? '0 impuls.' : '1 impuls.';
     return { eligible: true, reason: 'Part 1+2 ✓ · ' + r12 };
   }
-  if (ia || cl) return { eligible: false, reason: 'already initiated' };
-  return { eligible: true, reason: (p1 ? 'Part 1' : 'Part 2') + ' ✓ · no initiation yet' };
+  if (ia || cl) return { eligible: false, reason: 'lipseste aprof.' };
+  return { eligible: true, reason: (p1 ? 'Part 1' : 'Part 2') + ' ✓ · 0 impuls.' };
 }
 
 function sy(m) { document.getElementById('sy').textContent = m; }
@@ -217,9 +217,17 @@ function render() {
   }).join('');
 }
 
-function delRow(idx) {
+async function delRow(idx) {
+  var r = rows[idx];
   rows.splice(idx, 1);
   render();
+  try {
+    await fetch(PROXY + '?action=csv_delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: r.name, email: r.email, part: r.part })
+    });
+  } catch(e) { sy('Delete sync error: ' + e.message); }
 }
 
 function dupRow(idx) {
