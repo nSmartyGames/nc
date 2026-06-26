@@ -66,6 +66,8 @@ body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-s
   <div class="groups-wrap" id="groupBtns">Loading…</div>
 </div>
 
+<div id="statsBox" style="margin-bottom:14px;padding:10px 14px;background:#1a1a1a;border:1px solid #333;border-radius:6px;font-size:13px;color:#aaa;display:none"></div>
+
 <div class="bcc-section">
   <div class="bcc-header">
     <span class="bcc-count" id="bccCount">0 emails</span>
@@ -195,7 +197,14 @@ if (!sessionStorage.getItem('adminAuth')) {
 }
 
 var FC = {ID:'fldQ7kSY1KZ2bTska',LABEL:'fldqdzbMbgMf4fVU4',GROUPS:'fld4OYOz8TD70oFjP'};
-var FS = {EMAIL:'fldTKQVFs3vrMrwWA',NAME:'fld4Lx0LL4sfYOyy7',SUBS:'fldUvZSA5jTlsLQFH'};
+var FS = {EMAIL:'fldTKQVFs3vrMrwWA',NAME:'fld4Lx0LL4sfYOyy7',SUBS:'fldUvZSA5jTlsLQFH',NOTE:'fld03gdtFjOIkn7wB'};
+var PRICES={'YTT-M1':200,'YTT-M2':200,'YTT-M3':220,'I Ching':250,'AL':255};
+var GROUP_PRICES={'YTT-M1-G8':225,'YTT-M3-G1':200,'I Ching-G1':175,'I Ching-G2':175};
+function getCoursePrice(cid,nota,group){
+  if(cid==='AL'){var n=parseInt(nota||0);return(n&&n%175===0)?175:255;}
+  if(group){var gk=GROUP_PRICES[cid+'-'+group];if(gk!==undefined)return gk;}
+  return PRICES[cid]||0;
+}
 
 var courses = [], rows = [], groupBtns = [];
 var queueRunning = false, queueStop = false, queueFailed = false, queueTimer = null;
@@ -230,13 +239,17 @@ async function load(){
       {id:'YTT-M3',groups:['All','G1','G2']}
     ];
   }
+  var FINISHED=[{c:'AL',g:'G4'},{c:'YTT-M1',g:'G6'}];
+  courses.forEach(function(co){
+    FINISHED.forEach(function(f){if(co.id===f.c)co.groups=co.groups.filter(function(g){return g!==f.g;});});
+  });
   try{
     var sr=await (await fetch(PROXY+'?action=students')).json();
     rows=(sr.records||[]).map(function(r){
       var f=r.fields||{};
       var subs={};
       try{subs=JSON.parse(fv(f,FS.SUBS,'subscriptions')||'{}');}catch(e){}
-      return {email:(fv(f,FS.EMAIL,'email')||'').trim().replace(/[;,\s]+$/,''),subscriptions:subs};
+      return {email:(fv(f,FS.EMAIL,'email')||'').trim().replace(/[;,\s]+$/,''),subscriptions:subs,note:(fv(f,FS.NOTE,'note')||'').trim()};
     });
   }catch(e){rows=[];}
 
@@ -284,7 +297,33 @@ function getPaidEmails(){
   return list;
 }
 
+function computeStats(){
+  var currLei=0,nextLei=0,nextSeen={},nextCount=0;
+  rows.forEach(function(row){
+    groupBtns.forEach(function(b){
+      if(!b.on) return;
+      var sub=row.subscriptions&&row.subscriptions[b.courseId];
+      if(!sub) return;
+      if(b.group!=='All'&&'G'+(sub.G||'')!==b.group) return;
+      var grp=sub.G?'G'+sub.G:'';
+      var price=getCoursePrice(b.courseId,row.note,grp);
+      var cs=statusLetter(sub.curr||'');
+      var ns=statusLetter(sub.next||'');
+      if(cs==='P'||cs==='F'||cs==='G') currLei+=price;
+      if(ns==='P'||ns==='F'||ns==='G'){nextLei+=price;if(!nextSeen[row.email]){nextSeen[row.email]=true;nextCount++;}}
+    });
+  });
+  var mo=new Date().getMonth();
+  var MO=MN[mo],MN2=MN[(mo+1)%12];
+  var box=document.getElementById('statsBox');
+  box.style.display='block';
+  box.innerHTML='<span style="color:#d4a017;font-weight:700">'+MO+':</span> <span style="color:#7ec850">'+currLei+' LEI</span>'
+    +'&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:#d4a017;font-weight:700">'+MN2+':</span> <span style="color:#7ec850">'+nextLei+' LEI</span>'
+    +'&nbsp;&nbsp;·&nbsp;&nbsp;<span style="color:#5ab0e0">'+nextCount+' subscribers next month</span>';
+}
+
 function updateBCC(){
+  computeStats();
   var emails=getPaidEmails();
   document.getElementById('bccCount').textContent=emails.length+' emails ('+MN[new Date().getMonth()]+' paid)';
   document.getElementById('bccList').textContent=emails.join('; ');
