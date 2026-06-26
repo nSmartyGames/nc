@@ -263,7 +263,7 @@ var T = {
     sending: 'Se trimite…',
     messageSent: 'Mesaj trimis!',
     failedToSend: 'Trimitere eșuată',
-    ksJoin: 'Vreau să particip!',
+    ksJoin: 'Vreau să mă înscriu!',
     ksTypeLabel: function(hasLive, hasReplay) {
       return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
     },
@@ -365,7 +365,9 @@ function showDashboard() {
   var studentEmail = (f.email || '').toLowerCase();
   var ksData = ks2026Enrollments[studentEmail] || {};
   var ksSessions = ksData.sessions || [];
-  var isKsEnrolled = ksSessions.length > 0;
+  var ksTax = ksData.tax || '';
+  var isKsPaid = ksTax && ksTax !== 'pending';
+  var isKsEnrolled = ksSessions.length > 0 && isKsPaid;
   var hasLive   = ksSessions.indexOf('live')   >= 0;
   var hasReplay = ksSessions.indexOf('replay') >= 0;
   var rudraLoc  = ksData.rudra || '';

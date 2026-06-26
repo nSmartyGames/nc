@@ -1021,12 +1021,14 @@ switch ($action) {
             fgetcsv($fh); // skip header
             while (($row = fgetcsv($fh)) !== false) {
                 $email = strtolower(trim($row[1] ?? ''));
+                $tax   = trim($row[2] ?? '');
                 $sess  = strtolower(trim($row[3] ?? 'live')) ?: 'live';
                 $rudra = trim($row[5] ?? '');
                 if ($email && strpos($email, '@') !== false) {
-                    if (!isset($enrollments[$email])) $enrollments[$email] = ['sessions' => [], 'rudra' => ''];
+                    if (!isset($enrollments[$email])) $enrollments[$email] = ['sessions' => [], 'rudra' => '', 'tax' => $tax];
                     if (!in_array($sess, $enrollments[$email]['sessions'])) $enrollments[$email]['sessions'][] = $sess;
                     if ($rudra) $enrollments[$email]['rudra'] = $rudra;
+                    if ($tax) $enrollments[$email]['tax'] = $tax;
                 }
             }
             fclose($fh);

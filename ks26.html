@@ -136,7 +136,7 @@ function txBadge(t) {
   return '<span class="tx tx-P">' + esc(t) + '</span>';
 }
 
-function isPaid(t) { t=(t||'').trim(); return t==='505'||t==='840'||t==='1050'||t==='630'||t==='G'; }
+function isPaid(t) { t=(t||'').trim(); return t==='505'||t==='840'||t==='1050'||t==='630'||t==='G'||t==='pending'; }
 
 function setTab(t) {
   tab = t;

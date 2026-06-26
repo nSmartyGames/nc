@@ -201,6 +201,7 @@ document.getElementById('lC').textContent=MN[mo];
 
 var ORD={F:0,P:1,PEND:1,G:2,S:3,'':4};
 var PRICES={'YTT-M1':200,'YTT-M2':200,'YTT-M3':220,'I Ching':250,'AL':255};
+var GROUP_PRICES={'YTT-M1-G8':225,'YTT-M3-G1':200,'I Ching-G1':175,'I Ching-G2':175};
 var TCOL={F:'#5aa0d0',P:'#7ec850',PEND:'#e0a040',G:'#a07ed0',S:'#e07070','':'#555'};
 var TORD=['F','P','PEND','G','S',''];
 var courses=[], rows=[], sessions=[];
@@ -212,8 +213,9 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function clearSearch(id){var el=document.getElementById(id);if(el){el.value='';render();el.focus();}}
 function statusLetter(v){return (v||'').replace(/\d+$/,'') || '';}
 function statusNum(v){var m=(v||'').match(/\d+$/);return m?parseInt(m[0]):null;}
-function getCoursePrice(cid,nota){
+function getCoursePrice(cid,nota,group){
   if(cid==='AL'){var n=parseInt(nota||0);return (n&&n%175===0)?175:255;}
+  if(group){var gk=GROUP_PRICES[cid+'-'+group];if(gk!==undefined)return gk;}
   return PRICES[cid]||0;
 }
 
@@ -414,7 +416,8 @@ function prepaidBadge(row,idx,cid,slot){
   if(num===null){
     var nota=(row.note||'').trim();
     if(/^\d+$/.test(nota)){
-      var price=getCoursePrice(cid,nota);
+      var grp=(row.subscriptions&&row.subscriptions[cid]&&row.subscriptions[cid].G)?'G'+row.subscriptions[cid].G:'';
+      var price=getCoursePrice(cid,nota,grp);
       if(price){num=Math.floor(parseInt(nota)/price);if(num<=0)num=null;}
     }
   }
@@ -474,7 +477,7 @@ function render(){
       var raw=(x.r.subscriptions[activeCourse]&&x.r.subscriptions[activeCourse][slot])||'';
       var k=statusLetter(raw)||'';
       c[k]=(c[k]||0)+1;
-      if(k==='P'||k==='F'||k==='G'||k==='PEND') sumLei+=getCoursePrice(activeCourse,(x.r.note||'').trim());
+      if(k==='P'||k==='F'||k==='G'||k==='PEND'){var sg=x.r.subscriptions&&x.r.subscriptions[activeCourse]&&x.r.subscriptions[activeCourse].G?'G'+x.r.subscriptions[activeCourse].G:activeGroup;sumLei+=getCoursePrice(activeCourse,(x.r.note||'').trim(),sg);}
     });
     var paid=(c['P']||0)+(c['F']||0)+(c['G']||0)+(c['PEND']||0);
     var html=TORD.filter(function(k){return c[k];}).map(function(k){
