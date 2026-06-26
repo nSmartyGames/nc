@@ -302,7 +302,7 @@ function buildCourseHeader(){
     var co=courses.find(function(x){return x.id===expandedCourse;});
     if(co) groups=(co.groups||['All']).map(function(g){
       var on=(activeCourse===co.id&&activeGroup===g)?'on':'';
-      var red=(co.id==='YTT-M1'&&g==='G6')?'gbt-red':'';
+      var red=((co.id==='YTT-M1'&&g==='G6')||(co.id==='AL'&&g==='G4'))?'gbt-red':'';
       return '<button class="gbt '+red+' '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
     }).join('');
   }
