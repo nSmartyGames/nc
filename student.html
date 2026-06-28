@@ -216,6 +216,7 @@ var T = {
     ksThankYou: 'Thank you for registering for the 2026 Kashmir Shaivism Retreat!',
     ksStarting: '🗓 Starting June 25, 14:30 CEST',
     ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Join on Zoom</a>',
+    ksVideoLabel: 'This is the first hour recording from the first session of 27th June',
     ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
     ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
     ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
@@ -270,6 +271,7 @@ var T = {
     ksThankYou: 'Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!',
     ksStarting: '🗓 Începând cu 25 iunie, 14:30 CEST',
     ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Alătură-te pe Zoom</a>',
+    ksVideoLabel: 'Înregistrarea primei ore din prima sesiune din 27 iunie',
     ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
     ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
     ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
@@ -363,6 +365,7 @@ function showDashboard() {
   var nextMonth = MN[(mo+1)%12];
 
   var studentEmail = (f.email || '').toLowerCase();
+  var studentNote = (f.note || '').trim();
   var ksData = ks2026Enrollments[studentEmail] || {};
   var ksSessions = ksData.sessions || [];
   var ksTax = ksData.tax || '';
@@ -395,7 +398,7 @@ function showDashboard() {
     ksCard += '<div class="sub-body">';
     if (hasLive) ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span></div>';
     if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:6px">' + tr.ksZoomNote + '</div>';
-    if (hasLive)   ksCard += '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;margin-bottom:10px"><iframe src="https://player.vimeo.com/video/1205107292?h=b380d9960d&autoplay=0&color=5ab0e0&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe></div>';
+    if (hasLive)   ksCard += '<div style="font-size:12px;color:#5ab0e0;margin-bottom:6px;font-style:italic">' + tr.ksVideoLabel + '</div><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;margin-bottom:10px"><iframe src="https://player.vimeo.com/video/1205107292?h=b380d9960d&autoplay=0&color=5ab0e0&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe></div>';
     if (hasReplay) ksCard += '<div style="font-size:13px;color:#7ec850;margin-bottom:4px">✓ ' + tr.ksReplayWait + '</div><div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px">' + tr.ksReplayStart + '</div><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:6px">' + tr.ksReplayUpload + '</div>';
     ksCard += '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a">';
     ksCard += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
@@ -429,6 +432,7 @@ function showDashboard() {
     var currLetter = currStatus.replace(/\d+$/, '');
     var statusClass = 'st-' + currLetter;
     var isPaid = currLetter === 'P' || currLetter === 'F' || currLetter === 'G';
+    var isPrivate = !isPaid && studentNote.length > 0;
 
     var groupId = c.id + '-G' + (sub.G || '');
     var courseSessions = [];
@@ -444,6 +448,10 @@ function showDashboard() {
         } else if(s.email === studentEmail) {
           courseSessions.push(s);
         }
+      });
+    } else if (isPrivate) {
+      courseSessions = sessions.filter(function(s){
+        return s.id.indexOf(c.id) === 0 && s.email === studentEmail;
       });
     }
     courseSessions.sort(function(a, b) {
@@ -473,7 +481,7 @@ function showDashboard() {
     }
     html += '<div class="month-info">' + currMonth + ': ' + statusLabel(currStatus) + ' · ' + nextPart + '</div>';
 
-    if (isPaid) {
+    if (isPaid || isPrivate) {
       if (courseSessions.length > 0) {
         html += '<div class="session-list">';
         courseSessions.forEach(function(s) {
@@ -481,7 +489,7 @@ function showDashboard() {
         });
         html += '</div>';
         html += '<div class="player-box" id="pb_' + c.id.replace(/[^a-zA-Z0-9]/g,'_') + '"></div>';
-      } else {
+      } else if (isPaid) {
         html += '<div class="no-sessions">' + tr.noSessions + '</div>';
       }
     }
