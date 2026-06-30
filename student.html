@@ -221,13 +221,15 @@ var T = {
     ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
     ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
     ksReplayUpload: 'On July 3rd, at 10:00 CEST, we will upload the link for watching the replay session.',
+    ksBuyReplay: 'If you attended the live retreat and wish to have access to the replay session as well, pay 100 lei.',
+    ksBuyReplayBtn: 'Get replay access — 100 lei',
     rudraSection: 'Initiation',
     rudraEnrolled: 'Enrolled',
     rudraTitle: 'The initiation in the mantra of Rudra-Shiva',
     rudraDate: 'July 8, 2026',
     rudraAt: 'at',
     rudraDesc: 'will take place on <strong>July 8, 2026</strong>, at <strong>19:00</strong>, in Bucharest and Cluj (and also in August in Costinești).',
-    rudraChooseLocation: 'Choose location:',
+    rudraChooseLocation: 'Cum te inscrii la initiere? Alege locatia:',
     rudraThankYou: '✓ Thank you for subscribing!',
     rudraBucharest: 'Bucharest',
     rudraBucharestBtn: '📍 Bucharest',
@@ -276,13 +278,15 @@ var T = {
     ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
     ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
     ksReplayUpload: 'Pe 3 iulie, la 10:00 CEST, vom încărca link-ul pentru vizionarea sesiunii de reluare.',
+    ksBuyReplay: 'Dacă ai participat la tabăra live și dorești să ai acces și la sesiunea de reluare, achită 100 lei.',
+    ksBuyReplayBtn: 'Obține acces la reluare — 100 lei',
     rudraSection: 'Inițiere',
     rudraEnrolled: 'Înscris',
     rudraTitle: 'Inițierea în mantra lui Rudra-Șiva',
     rudraDate: '8 iulie 2026',
     rudraAt: 'ora',
     rudraDesc: 'va fi oferită pe <strong>8 iulie 2026</strong>, de la <strong>19:00</strong>, în București și în Cluj (și de asemenea în august în Costinești).',
-    rudraChooseLocation: 'Alege locația:',
+    rudraChooseLocation: 'Cum te inscrii la initiere? Alege locatia:',
     rudraThankYou: '✓ Vă mulțumim pentru înscriere!',
     rudraBucharest: 'București',
     rudraBucharestBtn: '📍 București',
@@ -398,7 +402,8 @@ function showDashboard() {
     ksCard += '<div class="sub-body">';
     if (hasLive) ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span></div>';
     if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;line-height:1.6;margin-bottom:6px">' + tr.ksZoomNote + '</div>';
-    if (hasLive)   ksCard += '<div style="font-size:12px;color:#5ab0e0;margin-bottom:6px;font-style:italic">' + tr.ksVideoLabel + '</div><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:8px;background:#000;margin-bottom:10px"><iframe src="https://player.vimeo.com/video/1205107292?h=b380d9960d&autoplay=0&color=5ab0e0&title=0&byline=0&portrait=0" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allowfullscreen allow="autoplay; fullscreen; picture-in-picture"></iframe></div>';
+    if (hasLive)   ksCard += '<div style="font-size:12px;color:#5ab0e0;margin-bottom:6px;font-style:italic">' + tr.ksVideoLabel + '</div><div style="margin-bottom:10px"><a href="https://vimeo.com/1205107292/b380d9960d" target="_blank" rel="noopener" style="display:inline-block;background:#1a2a3a;color:#5ab0e0;border:1px solid #2a6a9a;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;text-decoration:none">▶ Watch on Vimeo</a></div>';
+    if (hasLive && !hasReplay) ksCard += '<div style="margin:6px 0 12px;padding:10px 12px;background:#15151f;border:1px solid #2a6a9a;border-radius:8px"><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:8px">' + tr.ksBuyReplay + '</div><a href="https://nicolaecatrina.com/en/confirmare-comanda/?buy-now=48357" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block;background:#1a2a3a;color:#5ab0e0;border:1px solid #2a6a9a;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;text-decoration:none">' + tr.ksBuyReplayBtn + '</a></div>';
     if (hasReplay) ksCard += '<div style="font-size:13px;color:#7ec850;margin-bottom:4px">✓ ' + tr.ksReplayWait + '</div><div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px">' + tr.ksReplayStart + '</div><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:6px">' + tr.ksReplayUpload + '</div>';
     ksCard += '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a">';
     ksCard += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
@@ -475,7 +480,7 @@ function showDashboard() {
     var payUrl = COURSE_PAY_URLS[c.id];
     var nextPart;
     if (!nextStatus && payUrl) {
-      nextPart = '<button class="pay-now-btn" onclick="openPopup(\'' + esc(payUrl) + '\')">' + nextMonth + ': ' + tr.payNow + '</button>';
+      nextPart = '<a class="pay-now-btn" href="' + esc(payUrl) + '" target="_blank" rel="noopener">' + nextMonth + ': ' + tr.payNow + '</a>';
     } else {
       nextPart = nextMonth + ': ' + statusLabel(nextStatus);
     }

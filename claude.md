@@ -106,6 +106,11 @@ Session id format: "YTT-M1-G6", "YTT-M2-G4", etc. Format: courseId-groupId.
 - `POST ?action=vimeo_play` — set fresh password on Vimeo video, return embed code (body: {"url":"..."})
 - `GET ?action=sessions_clear&id=YTT-M1-G6` — delete all sessions for a group
 - `POST ?action=sessions_upsert` — upsert session records (body: {"sessions":[{id,session,link}]})
+- `POST ?action=orders_scan` — read-only scan of unread WooCommerce orders (body: {"days":2}); parses name/email/course/group/total/nota + Airtable dup-check; `OP_READONLY`+`FT_PEEK`, never marks read
+- `POST ?action=orders_mark` — mark order emails + matching NETOPIA `Plată înregistrată` confirmations read (body: {"names":[...], "mark_failed":true}); `mark_failed` also clears `Comandă eșuată`/`Failed order`
+- `POST ?action=upsert_sub` — set a course's `next` status for a student by email; creates the student if new (body: {name,email,course,group,status})
+
+See the `daily-orders` skill (`.claude/skills/daily-orders/`) for the daily order-intake workflow built on these.
 
 ## Admin Table (yoga.html) Features
 - Dark theme, gold text, system-ui font
@@ -120,6 +125,7 @@ Session id format: "YTT-M1-G6", "YTT-M2-G4", etc. Format: courseId-groupId.
 - Add subscriber form: open by default, fields for Name/Email/Group#
 - Session links panel shown per group (below bar)
 - Vimeo import bar: import class video links by range (e.g. 50-53)
+- Command console (fixed bottom bar): type `/daily-orders [days]` to scan unread orders, review with dup-flags, insert selected (next=P), and mark emails read — in-app version of the `daily-orders` skill. `/help` lists commands.
 
 ## Student Portal (student.html) Features
 - Login with 5-digit code (individual digit inputs with auto-advance)

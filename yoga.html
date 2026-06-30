@@ -184,6 +184,44 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 <div class="drop" id="drop"></div>
 <div class="tnote" id="tnote"></div>
 
+<!-- ===== Command console (bottom bar) ===== -->
+<style>
+#cmdSpacer{height:46px}
+#cmdConsole{position:fixed;left:0;right:0;bottom:0;z-index:9000;background:#141414;border-top:2px solid #d4a017;font-family:ui-monospace,Menlo,Consolas,monospace}
+#cmdOut{display:none;max-height:55vh;overflow:auto;padding:10px 14px;color:#cfcfcf;font-size:13px;border-bottom:1px solid #2a2a2a}
+#cmdOut.show{display:block}
+#cmdBarRow{display:flex;align-items:center;gap:8px;padding:7px 12px}
+#cmdConsole .cmd-prompt{color:#d4a017;font-weight:700;font-size:15px}
+#cmdInput{flex:1;background:#0d0d0d;color:#e8e8e8;border:1px solid #333;border-radius:6px;padding:7px 11px;font-size:13px;outline:none;font-family:inherit}
+#cmdInput:focus{border-color:#d4a017}
+#cmdConsole .cbtn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:6px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+#cmdConsole .cbtn:hover{border-color:#d4a017;background:#333}
+#cmdConsole .cbtn.go{background:#1a3a1a;color:#7ec850;border-color:#2a5a2a}
+#cmdConsole .cbtn.go:hover{border-color:#7ec850}
+.ord-tbl{width:100%;border-collapse:collapse;margin:6px 0 4px}
+.ord-tbl th,.ord-tbl td{padding:4px 7px;text-align:left;border-bottom:1px solid #242424;white-space:nowrap}
+.ord-tbl th{color:#888;font-weight:600;font-size:11px}
+.ord-tbl td{color:#ccc;font-size:12px}
+.ord-skip{opacity:.5}
+.ord-flag{color:#e0a040;font-size:11px}
+.ord-dup{color:#e07070;font-size:11px;font-weight:700}
+.ord-new{color:#7ec850;font-size:11px}
+.cmd-muted{color:#777}
+.cmd-err{color:#e07070}
+.cmd-ok{color:#7ec850}
+</style>
+<div id="cmdSpacer"></div>
+<div id="cmdConsole">
+  <div id="cmdOut"></div>
+  <div id="cmdBarRow">
+    <span class="cmd-prompt">&gt;</span>
+    <input id="cmdInput" placeholder="type /daily-orders  (or /help)  — Enter to run" autocomplete="off"
+           onkeydown="if(event.key==='Enter')cmdRun()">
+    <button class="cbtn" onclick="cmdRun()">Run</button>
+    <button class="cbtn" onclick="cmdClear()" style="opacity:.7">Clear</button>
+  </div>
+</div>
+
 <script>
 var PROXY = /^\/app(\/|$)/.test(location.pathname)
   ? location.origin + '/app/airtable-proxy.php'
@@ -770,6 +808,135 @@ function handleOverlayClick(e){
 }
 
 load();
+</script>
+
+<script>
+// ===== Command console: /daily-orders =====
+var _cmdOrders = [];
+function cmdEsc(s){return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function cmdOut(){return document.getElementById('cmdOut');}
+function cmdShow(html){var o=cmdOut();o.innerHTML=html;o.classList.add('show');o.scrollTop=o.scrollHeight;}
+function cmdAppend(html){var o=cmdOut();o.insertAdjacentHTML('beforeend',html);o.classList.add('show');o.scrollTop=o.scrollHeight;}
+function cmdClear(){var o=cmdOut();o.innerHTML='';o.classList.remove('show');}
+
+function cmdRun(){
+  var inp=document.getElementById('cmdInput');
+  var raw=(inp.value||'').trim();
+  if(!raw)return;
+  inp.value='';
+  var parts=raw.split(/\s+/);
+  var cmd=parts[0].toLowerCase().replace(/^\//,'');
+  if(cmd==='daily-orders'||cmd==='orders'||cmd==='do'){
+    cmdDailyOrders(parts[1]?parseInt(parts[1]):2);
+  } else if(cmd==='help'||cmd==='?'){
+    cmdShow('<div class="cmd-muted">Commands:<br>'
+      +'&nbsp;<b style="color:#d4a017">/daily-orders [days]</b> — scan unread orders (default 2 days), review, insert, mark read<br>'
+      +'&nbsp;<b style="color:#d4a017">/clear</b> — clear console output</div>');
+  } else if(cmd==='clear'){
+    cmdClear();
+  } else {
+    cmdShow('<span class="cmd-err">Unknown command: '+cmdEsc(raw)+'</span> <span class="cmd-muted">— try /help</span>');
+  }
+}
+
+// Which orders are normal monthly subscriptions (auto-insertable)
+function cmdInsertable(o){
+  var monthly={'YTT-M1':1,'YTT-M2':1,'YTT-M3':1,'I Ching':1,'AL':1};
+  if(o.course==='KS26'||!monthly[o.course]) return {ok:false,reason:'KS26 / non-monthly — handle manually'};
+  if(o.course==='AL' && /seminar/i.test((o.nota||'')+' '+(o.course||''))) return {ok:false,reason:'AL seminar — not a monthly sub'};
+  return {ok:true};
+}
+
+async function cmdDailyOrders(days){
+  cmdShow('<span class="cmd-muted">Scanning unread orders (last '+days+' days)… read-only, nothing marked.</span>');
+  try{
+    var res=await fetch(PROXY+'?action=orders_scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:days})});
+    var j=await res.json();
+    if(j.error){cmdShow('<span class="cmd-err">IMAP/scan error: '+cmdEsc(j.error)+'</span>');return;}
+    _cmdOrders=j.orders||[];
+    if(!_cmdOrders.length){cmdShow('<span class="cmd-ok">No unread orders since '+cmdEsc(j.since)+'. Nothing to do.</span>');return;}
+    cmdRenderOrders(j.since);
+  }catch(e){cmdShow('<span class="cmd-err">Error: '+cmdEsc(e.message)+'</span>');}
+}
+
+function cmdRenderOrders(since){
+  var rows='';
+  _cmdOrders.forEach(function(o,i){
+    var ins=cmdInsertable(o);
+    var c=o.check||{};
+    var flag;
+    if(!ins.ok)                       flag='<span class="ord-flag">⚠ '+cmdEsc(ins.reason)+'</span>';
+    else if(!c.student_exists)        flag='<span class="ord-new">NEW student</span>';
+    else if(!c.has_course)            flag='<span class="ord-flag">⚠ exists, no '+cmdEsc(o.course)+' sub (verify key)</span>';
+    else if(c.already_paid)           flag='<span class="ord-dup">DUP — next='+cmdEsc(c.next)+'</span>';
+    else                              flag='<span class="cmd-muted">ok curr='+cmdEsc(c.curr)+' G='+cmdEsc(c.group)+'</span>';
+    var cg=cmdEsc(o.course)+(o.group?' G'+cmdEsc(o.group):'');
+    var checked=(ins.ok && !c.already_paid)?'checked':'';
+    var dis=ins.ok?'':'disabled';
+    rows+='<tr class="'+(ins.ok?'':'ord-skip')+'">'
+      +'<td><input type="checkbox" id="ord_chk_'+i+'" '+checked+' '+dis+'></td>'
+      +'<td>'+cmdEsc(o.onum)+'</td>'
+      +'<td>'+cmdEsc((o.date||'').slice(5,16))+'</td>'
+      +'<td>'+cmdEsc(o.name)+'</td>'
+      +'<td>'+cmdEsc(o.email)+'</td>'
+      +'<td>'+cg+'</td>'
+      +'<td>'+cmdEsc(o.total)+'</td>'
+      +'<td>'+cmdEsc(o.nota||'')+'</td>'
+      +'<td>'+flag+'</td>'
+      +'</tr>';
+  });
+  cmdShow(
+    '<div style="margin-bottom:4px"><b style="color:#d4a017">'+_cmdOrders.length+'</b> unread order(s) since '+cmdEsc(since)
+    +'. <span class="cmd-muted">Checked = will set next=P. Unchecked/greyed = handle manually.</span></div>'
+    +'<table class="ord-tbl"><thead><tr><th>✓</th><th>#</th><th>Date</th><th>Name</th><th>Email</th><th>Course/Grp</th><th>Sum</th><th>Nota</th><th>Check</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table>'
+    +'<div style="display:flex;gap:8px;margin-top:8px;align-items:center">'
+    +'<button class="cbtn go" onclick="cmdInsertSelected()">▸ Insert selected (next=P)</button>'
+    +'<button class="cbtn" onclick="cmdMarkRead()" title="Mark order emails + NETOPIA confirmations + failed orders read">✓ Mark all these emails read</button>'
+    +'<span id="cmdActMsg" class="cmd-muted"></span>'
+    +'</div>'
+  );
+}
+
+async function cmdInsertSelected(){
+  var sel=[];
+  _cmdOrders.forEach(function(o,i){
+    var cb=document.getElementById('ord_chk_'+i);
+    if(cb&&cb.checked&&!cb.disabled) sel.push(o);
+  });
+  if(!sel.length){document.getElementById('cmdActMsg').innerHTML='<span class="cmd-err">Nothing selected.</span>';return;}
+  cmdAppend('<div class="cmd-muted" style="margin-top:8px">Inserting '+sel.length+'…</div>');
+  var okc=0,errc=0;
+  for(var k=0;k<sel.length;k++){
+    var o=sel[k];
+    try{
+      var res=await fetch(PROXY+'?action=upsert_sub',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:o.name,email:o.email,course:o.course,group:String(o.group||''),status:'P'})});
+      var j=await res.json();
+      if(j.error){errc++;cmdAppend('<div class="cmd-err">✗ '+cmdEsc(o.email)+' '+cmdEsc(o.course)+': '+cmdEsc(j.error)+'</div>');}
+      else{okc++;cmdAppend('<div class="cmd-ok">✓ '+cmdEsc(j.action||'ok')+' '+cmdEsc(o.name)+' — '+cmdEsc(o.course)+(o.group?' G'+cmdEsc(o.group):'')+'</div>');}
+    }catch(e){errc++;cmdAppend('<div class="cmd-err">✗ '+cmdEsc(o.email)+': '+cmdEsc(e.message)+'</div>');}
+  }
+  cmdAppend('<div style="margin-top:6px"><b class="cmd-ok">'+okc+' inserted</b>'+(errc?' <b class="cmd-err">'+errc+' failed</b>':'')
+    +' — <span class="cmd-muted">refresh table to see changes, or click Mark read.</span></div>');
+  if(typeof load==='function') load();
+}
+
+async function cmdMarkRead(){
+  var names=_cmdOrders.map(function(o){return o.name;}).filter(Boolean);
+  var msg=document.getElementById('cmdActMsg');
+  if(msg)msg.textContent='Marking read…';
+  try{
+    var res=await fetch(PROXY+'?action=orders_mark',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({names:names,mark_failed:true})});
+    var j=await res.json();
+    if(j.error){if(msg)msg.innerHTML='<span class="cmd-err">'+cmdEsc(j.error)+'</span>';return;}
+    var m=j.marked||{};
+    cmdAppend('<div class="cmd-ok" style="margin-top:6px">✓ Marked read — orders: '+(m.orders||0)
+      +', confirmations: '+(m.confirmations||0)+', failed: '+(m.failed||0)+'</div>');
+    if(msg)msg.textContent='';
+  }catch(e){if(msg)msg.innerHTML='<span class="cmd-err">'+cmdEsc(e.message)+'</span>';}
+}
 </script>
 </body>
 </html>

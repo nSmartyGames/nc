@@ -176,6 +176,43 @@ function ncUpsertSub($em, $nm, $crs, $grp, $sts, $TBL_S) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── WooCommerce order parser (product-line first; more precise than ncParseEmail)
+function ncParseOrder($subj, $body) {
+    $flat = trim(preg_replace('/\s+/', ' ', $body));
+    $o = ['onum'=>'', 'name'=>'', 'email'=>'', 'course'=>'', 'group'=>'', 'total'=>'', 'nota'=>'', 'month'=>''];
+    if (preg_match('/\((\d+)\)/', $subj, $m)) $o['onum'] = $m[1];
+    // Buyer name
+    if (preg_match('/(?:comand[ăa] de la|order from) (.+?):/iu', $flat, $m)) $o['name'] = trim($m[1]);
+    // Billing email = last email address in body
+    if (preg_match_all('/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/', $flat, $m)) $o['email'] = end($m[0]);
+    // Product region between price header and subtotal
+    $prod = '';
+    if (preg_match('/(?:Pre[țt]|Price)\s+(.*?)\s+(?:Sub-?total|Subtotal)/iu', $flat, $m))
+        $prod = preg_replace('/\s+1 lei [\d.,]+$/', '', $m[1]);
+    // Total (last occurrence)
+    if (preg_match_all('/Total:\s*lei\s*([\d.,]+)/i', $flat, $m)) $o['total'] = end($m[1]);
+    // Nota
+    if (preg_match('/(?:Not[ăa]|Note):\s*(.+?)\s*(?:Adres[ăa] de facturare|Billing address)/iu', $flat, $m))
+        $o['nota'] = trim($m[1]);
+    // Course from product line, fallback nota
+    $hay = strtolower($prod . ' ' . $o['nota']);
+    if      (preg_match('/iching|i ching/', $hay))                       $o['course'] = 'I Ching';
+    elseif  (preg_match('/kashmir/', $hay))                              $o['course'] = 'KS26';
+    elseif  (preg_match('/alchim/', $hay))                               $o['course'] = 'AL';
+    elseif  (preg_match('/m3|modul(?:ul)? 3|module 3/', $hay))           $o['course'] = 'YTT-M3';
+    elseif  (preg_match('/m2|modul(?:ul)? 2|module 2/', $hay))           $o['course'] = 'YTT-M2';
+    elseif  (preg_match('/m1|modul(?:ul)? 1|module 1/', $hay))           $o['course'] = 'YTT-M1';
+    // Group from product line first, then nota
+    foreach ([$prod, $o['nota']] as $txt) {
+        if (preg_match('/gr(?:upa|\.|\b)?\s*([0-9])/i', $txt, $m)) { $o['group'] = $m[1]; break; }
+    }
+    // Month (from nota / subject)
+    if (preg_match('/\b(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|january|february|march|april|may|june|july|august|september|october|november|december)\b/i', $o['nota'].' '.$subj, $m))
+        $o['month'] = strtolower($m[1]);
+    return $o;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── IMAP helpers ─────────────────────────────────────────────────────────────
 function ncDecodeHeader($s) {
     if (!$s) return '';
@@ -811,6 +848,92 @@ switch ($action) {
         }
         imap_close($mbox);
         echo json_encode(['ok' => true, 'total' => count($nums), 'results' => $results]);
+        break;
+
+    case 'orders_scan':
+        // Read-only scan of unread WooCommerce orders + Airtable duplicate check. Never marks \Seen.
+        $days  = max(1, intval($body['days'] ?? 2));
+        $since = date('d-M-Y', strtotime("-" . ($days - 1) . " days"));
+        $mbox  = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, OP_READONLY, 1);
+        if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
+        $uids  = imap_search($mbox, 'UNSEEN SINCE "' . $since . '"', SE_UID) ?: [];
+        // Load students once for dup-check
+        $all = atAll("$TBL_S?" . 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fldUvZSA5jTlsLQFH');
+        $byEmail = [];
+        foreach (($all['records'] ?? []) as $rec) {
+            $em = strtolower(trim($rec['fields']['email'] ?? ''));
+            if ($em) $byEmail[$em] = $rec['fields'];
+        }
+        $orders = [];
+        foreach ($uids as $uid) {
+            $no   = imap_msgno($mbox, $uid);
+            $hdr  = imap_headerinfo($mbox, $no);
+            $subj = ncDecodeHeader($hdr->subject ?? '');
+            if (!preg_match('/^\s*(Comand[ăa] nou[ăa] de la client|New order)/iu', $subj)) continue;
+            $btxt = ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no));
+            $p = ncParseOrder($subj, $btxt);
+            $p['uid']  = $uid;
+            $p['date'] = date('Y-m-d H:i', strtotime($hdr->date ?? 'now'));
+            // Duplicate / already-paid check
+            $f = $byEmail[strtolower($p['email'])] ?? null;
+            $dup = null;
+            if ($f) {
+                $subs = json_decode($f['subscriptions'] ?? '{}', true) ?: [];
+                $e = $subs[$p['course']] ?? null;
+                $dup = ['student_exists' => true,
+                        'has_course'  => $e !== null,
+                        'curr'        => $e['curr'] ?? null,
+                        'next'        => $e['next'] ?? null,
+                        'group'       => $e['G'] ?? null,
+                        'already_paid'=> $e !== null && !empty($e['next']) && $e['next'] !== 'S'];
+            } else {
+                $dup = ['student_exists' => false];
+            }
+            $p['check'] = $dup;
+            $orders[] = $p;
+        }
+        imap_close($mbox); // OP_READONLY — no flags touched
+        echo json_encode(['ok' => true, 'since' => $since, 'count' => count($orders), 'orders' => $orders],
+                         JSON_UNESCAPED_UNICODE);
+        break;
+
+    case 'orders_mark':
+        // Mark order emails + matching NETOPIA confirmations + failed orders as read.
+        // Input: {names:[buyer names], mark_failed:bool}
+        $names = array_map(function($n){
+            $n = @iconv('UTF-8','ASCII//TRANSLIT', $n);
+            $n = strtolower(preg_replace('/[^a-z ]/', ' ', strtolower($n)));
+            return trim(preg_replace('/\s+/', ' ', $n));
+        }, (array)($body['names'] ?? []));
+        $nameset    = array_fill_keys(array_filter($names), 1);
+        $markFailed = !empty($body['mark_failed']);
+        $mbox = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, 0, 1); // read-write
+        if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
+        $uids = imap_search($mbox, 'UNSEEN', SE_UID) ?: [];
+        $r = ['orders'=>0, 'confirmations'=>0, 'failed'=>0];
+        foreach ($uids as $uid) {
+            $no   = imap_msgno($mbox, $uid);
+            $subj = ncDecodeHeader(imap_headerinfo($mbox, $no)->subject ?? '');
+            if (preg_match('/^\s*(Comand[ăa] nou[ăa] de la client|New order)/iu', $subj)) {
+                imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['orders']++; continue;
+            }
+            if ($markFailed && preg_match('/comand[ăa]\s+e[șs]uat[ăa]|failed order/iu', $subj)) {
+                imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['failed']++; continue;
+            }
+            if (preg_match('/plat[ăa]\s+[îi]nregistrat[ăa]\s*-\s*self awakening/iu', $subj)) {
+                $flat = preg_replace('/\s+/', ' ', ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no)));
+                $buyer = '';
+                if (preg_match('/Buyer.?s Name:\s*(.+?)\s+Transaction ID/iu', $flat, $m)) $buyer = $m[1];
+                elseif (preg_match('/^\s*(.+?)\s+ID tranzac/iu', $flat, $m)) $buyer = $m[1];
+                $bn = trim(preg_replace('/\s+/', ' ', strtolower(preg_replace('/[^a-z ]/', ' ',
+                        strtolower(@iconv('UTF-8','ASCII//TRANSLIT', $buyer))))));
+                if ($bn && isset($nameset[$bn])) {
+                    imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['confirmations']++;
+                }
+            }
+        }
+        imap_close($mbox);
+        echo json_encode(['ok' => true, 'marked' => $r]);
         break;
 
     case 'send_admin':
