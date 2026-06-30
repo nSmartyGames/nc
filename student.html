@@ -215,8 +215,6 @@ var T = {
     },
     ksThankYou: 'Thank you for registering for the 2026 Kashmir Shaivism Retreat!',
     ksStarting: '🗓 Starting June 25, 14:30 CEST',
-    ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Join on Zoom</a>',
-    ksVideoLabel: 'This is the first hour recording from the first session of 27th June',
     ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
     ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
     ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
@@ -272,8 +270,6 @@ var T = {
     },
     ksThankYou: 'Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!',
     ksStarting: '🗓 Începând cu 25 iunie, 14:30 CEST',
-    ksZoomNote: '🔗 <a href="https://us02web.zoom.us/j/85305086642?pwd=qHWFCXd4wJfcB8kTPQVs80dqim75P7.1" target="_blank" style="color:#5aa0d0">Alătură-te pe Zoom</a>',
-    ksVideoLabel: 'Înregistrarea primei ore din prima sesiune din 27 iunie',
     ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
     ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
     ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
@@ -534,10 +530,13 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 function rudraConfirmHTML(locDisplay) {
   var tr = t();
+  var addrMap = {Cluj:'Bâlea nr.9K', 'București':'Alecu Russo nr.9', 'Bucharest':'Alecu Russo nr.9'};
+  var addr = addrMap[locDisplay] || '';
   return '<div style="color:#7ec850;font-size:13px;margin-bottom:10px">' + tr.rudraThankYou + '</div>' +
     '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:6px">' +
     '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
     '📅 <strong>' + tr.rudraDate + '</strong>, ' + tr.rudraAt + ' <strong>19:00</strong> &nbsp;·&nbsp; <strong>' + locDisplay + '</strong>' +
+    (addr ? '<br><span style="font-size:12px;color:#a07ae0">📍 ' + addr + '</span>' : '') +
     '</div>';
 }
 function rudraFormHTML() {

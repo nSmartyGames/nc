@@ -215,7 +215,7 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
   <div id="cmdOut"></div>
   <div id="cmdBarRow">
     <span class="cmd-prompt">&gt;</span>
-    <input id="cmdInput" placeholder="type /daily-orders  (or /help)  — Enter to run" autocomplete="off"
+    <input id="cmdInput" placeholder="type /daily-orders  ·  /copy …  (or /help)  — Enter to run" autocomplete="off"
            onkeydown="if(event.key==='Enter')cmdRun()">
     <button class="cbtn" onclick="cmdRun()">Run</button>
     <button class="cbtn" onclick="cmdClear()" style="opacity:.7">Clear</button>
@@ -828,15 +828,84 @@ function cmdRun(){
   var cmd=parts[0].toLowerCase().replace(/^\//,'');
   if(cmd==='daily-orders'||cmd==='orders'||cmd==='do'){
     cmdDailyOrders(parts[1]?parseInt(parts[1]):2);
+  } else if(cmd==='copy'||cmd==='emails'||cmd==='email'){
+    cmdCopyEmails(raw.replace(/^\S+\s*/,''));
   } else if(cmd==='help'||cmd==='?'){
     cmdShow('<div class="cmd-muted">Commands:<br>'
       +'&nbsp;<b style="color:#d4a017">/daily-orders [days]</b> — scan unread orders (default 2 days), review, insert, mark read<br>'
+      +'&nbsp;<b style="color:#d4a017">/copy &lt;course&gt; [group|live|replay] [paid|unpaid|all]</b> — copy emails to clipboard, ;-separated<br>'
+      +'&nbsp;<span class="cmd-muted">e.g. <i>/copy kashmir paid live</i> · <i>/copy ks26 both</i> (live+replay deduped) · <i>/copy ytt-m1 g6</i></span><br>'
       +'&nbsp;<b style="color:#d4a017">/clear</b> — clear console output</div>');
   } else if(cmd==='clear'){
     cmdClear();
   } else {
     cmdShow('<span class="cmd-err">Unknown command: '+cmdEsc(raw)+'</span> <span class="cmd-muted">— try /help</span>');
   }
+}
+
+// ===== Command console: /copy <course> [group|live|replay] [paid|unpaid|all] =====
+function cmdCopyDone(emails,desc){
+  var seen={},uniq=[],dups=0;
+  emails.forEach(function(e){var k=e.toLowerCase();if(seen[k]){dups++;return;}seen[k]=1;uniq.push(e);});
+  emails=uniq;
+  if(!emails.length){cmdShow('<span class="cmd-err">No matching emails</span> <span class="cmd-muted">for '+cmdEsc(desc)+'</span>');return;}
+  if(dups)desc+=', '+dups+' dup'+(dups===1?'':'s')+' removed';
+  var str=emails.join(';');
+  navigator.clipboard.writeText(str).then(function(){
+    cmdShow('<span class="cmd-ok">✓ Copied '+emails.length+' email'+(emails.length===1?'':'s')+'</span> '
+      +'<span class="cmd-muted">('+cmdEsc(desc)+') to clipboard, ;-separated</span>'
+      +'<div class="cmd-muted" style="margin-top:4px;word-break:break-all;font-size:11px">'+cmdEsc(str)+'</div>');
+  },function(){
+    cmdShow('<span class="cmd-err">Clipboard blocked.</span> <span class="cmd-muted">Copy manually:</span>'
+      +'<div style="margin-top:4px;word-break:break-all">'+cmdEsc(str)+'</div>');
+  });
+}
+
+async function cmdCopyEmails(argStr){
+  var t=(argStr||'').toLowerCase();
+  // paid filter
+  var filter='paid';
+  if(/\bunpaid\b|\bnot paid\b/.test(t)) filter='unpaid';
+  else if(/\ball\b|\beveryone\b|\beverybody\b/.test(t)) filter='all';
+  // KS26 (Kashmir Shaivism 2026)
+  if(/kashmir|shaivism|\bks26\b|\bks\b/.test(t)){
+    var hasLive=/\blive\b/.test(t),hasReplay=/replay|recording|inregistr|înregistr/.test(t);
+    var sess=/both|combined|all\s*session|live\s*\+?\s*replay/.test(t)||(hasLive&&hasReplay)?'both'
+            :(hasReplay?'replay':'live');
+    cmdShow('<span class="cmd-muted">Loading KS26 ('+sess+')…</span>');
+    try{
+      var res=await fetch(PROXY+'?action=ks26_read');var j=await res.json();
+      var data=j.records||j.rows||j.data||[];
+      var paid=function(x){var v=(x.tax||'').trim();return v==='505'||v==='840'||v==='1050'||v==='630'||v==='G'||v.toLowerCase()==='pending';};
+      var em=data.filter(function(r){
+        if(sess!=='both' && (r.session||'')!==sess)return false;
+        if(filter==='paid')return paid(r);
+        if(filter==='unpaid')return !paid(r);
+        return true;
+      }).map(function(r){return (r.email||'').trim();}).filter(Boolean);
+      cmdCopyDone(em,'KS26 '+sess+' · '+filter);
+    }catch(e){cmdShow('<span class="cmd-err">KS26 load error: '+cmdEsc(e.message)+'</span>');}
+    return;
+  }
+  // Regular courses (Students table / rows)
+  var cid=activeCourse;
+  if(/i\s*ching/.test(t)) cid='I Ching';
+  else if(/ytt[-\s]?m1|module\s*1|\bm1\b/.test(t)) cid='YTT-M1';
+  else if(/ytt[-\s]?m2|module\s*2|\bm2\b/.test(t)) cid='YTT-M2';
+  else if(/ytt[-\s]?m3|module\s*3|\bm3\b/.test(t)) cid='YTT-M3';
+  else if(/\bal\b|alchim|alchem/.test(t)) cid='AL';
+  // group e.g. g6
+  var gm=t.match(/\bg\s*(\d+)\b/);var grp=gm?gm[1]:null;
+  var isPaidL=function(s){var c=statusLetter(s||'');return c==='P'||c==='F'||c==='G'||c==='PEND';};
+  var em=rows.filter(function(r){
+    var sub=r.subscriptions&&r.subscriptions[cid];
+    if(!sub)return false;
+    if(grp){if(String(sub.G||'')!==grp)return false;}
+    if(filter==='paid')return isPaidL(sub.curr);
+    if(filter==='unpaid')return !isPaidL(sub.curr);
+    return true;
+  }).map(function(r){return (r.email||'').trim();}).filter(Boolean);
+  cmdCopyDone(em,cid+(grp?' G'+grp:'')+' · '+filter);
 }
 
 // Which orders are normal monthly subscriptions (auto-insertable)
