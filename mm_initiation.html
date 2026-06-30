@@ -230,10 +230,22 @@ async function delRow(idx) {
   } catch(e) { sy('Delete sync error: ' + e.message); }
 }
 
-function dupRow(idx) {
+async function dupRow(idx) {
   var r = rows[idx];
-  rows.push({ name: r.name, email: r.email, part: 'new' });
+  var name = r.name, email = r.email;
+  rows.push({ name: name, email: email, part: 'new' });
   render();
+  sy('Saving…');
+  try {
+    var resp = await fetch(PROXY + '?action=csv_append', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, email: email, part: 'new' })
+    });
+    var data = await resp.json();
+    if (data.ok) { sy('Saved ✓'); setTimeout(function(){sy('');}, 2000); }
+    else { sy('Save error: ' + (data.error || 'unknown')); }
+  } catch(e) { sy('Save error: ' + e.message); }
 }
 
 function toggleAddForm() {
