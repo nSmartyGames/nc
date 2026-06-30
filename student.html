@@ -463,7 +463,7 @@ function showDashboard() {
     html += '<div class="sub-header" onclick="toggleSub(this)">';
     html += '<div class="sub-title">';
     html += '<span class="sub-badge">' + esc(c.id) + '</span>';
-    html += '<span class="sub-label">' + esc(c.label) + '</span>';
+    html += '<span class="sub-label">' + (sub.G ? 'G' + esc(sub.G) : esc(c.label)) + '</span>';
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:10px">';
     html += '<span class="sub-status ' + statusClass + '">' + statusText + '</span>';
