@@ -854,6 +854,7 @@ switch ($action) {
         $results = [];
         foreach ($nums as $num) {
             $hdr  = imap_headerinfo($mbox, $num);
+            $ov   = imap_fetch_overview($mbox, (string)$num, 0);
             $from = $hdr->from[0] ?? null;
             $repl = $hdr->reply_to[0] ?? null;
             $fe   = $from ? ($from->mailbox . '@' . ($from->host ?? '')) : '';
@@ -864,10 +865,39 @@ switch ($action) {
             $struct = imap_fetchstructure($mbox, $num);
             $btxt = mb_substr(trim(ncGetBody($mbox, $num, $struct)), 0, 800);
             $results[] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe,
-                          'reply_to' => $re, 'subject' => $subj, 'date' => $dstr, 'body' => $btxt];
+                          'reply_to' => $re, 'subject' => $subj, 'date' => $dstr, 'body' => $btxt,
+                          'seen' => !empty($ov[0]->seen), 'flagged' => !empty($ov[0]->flagged)];
         }
         imap_close($mbox);
         echo json_encode(['ok' => true, 'total' => count($nums), 'results' => $results]);
+        break;
+
+    case 'flagged_scan':
+        // Read-only: every UNSEEN or FLAGGED message since a date, any subject. For manual
+        // review sweeps that aren't limited to the WooCommerce order pattern (see orders_scan).
+        $since = trim($body['since'] ?? '20-May-2026');
+        $max_f = intval($body['max'] ?? 200);
+        $mbox  = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, OP_READONLY, 1);
+        if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
+        $unseenUids  = imap_search($mbox, 'UNSEEN SINCE "' . addslashes($since) . '"', SE_UID) ?: [];
+        $flaggedUids = imap_search($mbox, 'FLAGGED SINCE "' . addslashes($since) . '"', SE_UID) ?: [];
+        $uids = array_slice(array_values(array_unique(array_merge($unseenUids, $flaggedUids))), 0, $max_f);
+        $results = [];
+        foreach ($uids as $uid) {
+            $no   = imap_msgno($mbox, $uid);
+            $hdr  = imap_headerinfo($mbox, $no);
+            $from = $hdr->from[0] ?? null;
+            $fe   = $from ? ($from->mailbox . '@' . ($from->host ?? '')) : '';
+            $fn   = $from ? ncDecodeHeader($from->personal ?? '') : '';
+            $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
+            $dstr = date('d M Y, H:i', strtotime($hdr->date ?? 'now'));
+            $btxt = mb_substr(trim(ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no))), 0, 500);
+            $results[] = ['uid' => $uid, 'from_name' => $fn, 'from_email' => $fe, 'subject' => $subj,
+                          'date' => $dstr, 'body' => $btxt,
+                          'unread' => in_array($uid, $unseenUids), 'flagged' => in_array($uid, $flaggedUids)];
+        }
+        imap_close($mbox); // OP_READONLY — no flags touched
+        echo json_encode(['ok' => true, 'since' => $since, 'count' => count($results), 'results' => $results]);
         break;
 
     case 'sent_scan':
@@ -1135,15 +1165,19 @@ switch ($action) {
         break;
 
     case 'email_flag':
-        $num  = intval($body['num']  ?? 0);
-        $flag = !empty($body['flag']);
-        if (!$num) { echo json_encode(['error' => 'num required']); break; }
+        $useUid   = isset($body['uid']);
+        $id       = $useUid ? intval($body['uid']) : intval($body['num'] ?? 0);
+        $flag     = !empty($body['flag']);
+        $markSeen = !empty($body['mark_seen']);
+        if (!$id) { echo json_encode(['error' => 'num or uid required']); break; }
         $mbox = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, 0, 1);
         if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
-        if ($flag) imap_setflag_full($mbox,   (string)$num, '\\Flagged');
-        else       imap_clearflag_full($mbox, (string)$num, '\\Flagged');
+        $opt = $useUid ? ST_UID : 0;
+        if ($flag) imap_setflag_full($mbox,   (string)$id, '\\Flagged', $opt);
+        else       imap_clearflag_full($mbox, (string)$id, '\\Flagged', $opt);
+        if ($markSeen) imap_setflag_full($mbox, (string)$id, '\\Seen', $opt);
         imap_close($mbox);
-        echo json_encode(['ok' => true, 'flagged' => $flag]);
+        echo json_encode(['ok' => true, 'flagged' => $flag, 'seen' => $markSeen]);
         break;
 
     case 'ks26_read':

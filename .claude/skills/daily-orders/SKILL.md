@@ -1,6 +1,6 @@
 ---
 name: daily-orders
-description: Daily intake of new WooCommerce yoga orders. Use when the user asks to "process orders", "fetch today's orders/payments", "add the iulie/monthly payments", or do the daily order-to-Airtable run. Scans unread AND flagged order emails (read-only), checks Airtable for duplicates, bulk-inserts next-month payments, and marks the emails read (clearing any flag).
+description: Daily intake of new WooCommerce yoga orders, plus sweeping flagged/unread inquiry emails (ceremony/initiation registrations, etc.). Use when the user asks to "process orders", "fetch today's orders/payments", "add the iulie/monthly payments", "check flagged mail", or do the daily order-to-Airtable run. Scans unread AND flagged order emails (read-only), checks Airtable/CSV for duplicates, bulk-inserts next-month payments or initiation registrations, sends confirmations, and marks the emails read (clearing any flag).
 ---
 
 # Daily Orders
@@ -70,6 +70,47 @@ them that were flagged**. Add `-f` to also clear `Comandă eșuată` / `Failed o
 ```
 echo '["Buyer One","Buyer Two"]' | python3 .claude/skills/daily-orders/orders.py mark - -f
 ```
+
+## Beyond WooCommerce orders: flagged/unread inquiry emails
+`orders_scan`/`orders_mark` only match the WooCommerce "Comandă nouă"/"New order" subject
+pattern. Registration *requests* for ceremonies/initiations (Rudra-Șiva, AMRITA SHAKTIPATA,
+Mahamrityunjaya mantra rounds, etc.) usually arrive as free-form emails, not orders, and often
+sit `\Flagged` in the inbox for a later manual look. To sweep those:
+
+1. **`flagged_scan`** (read-only) — every `UNSEEN` or `FLAGGED` message since a date, any subject:
+   `{"since":"20-May-2026","max":300}` → `{uid, from_name, from_email, subject, date, body, unread,
+   flagged}`. Use this first to see everything currently open, then triage by topic/keyword.
+2. **`email_search`** (read-only) — keyword + date search across *all* mail (not just unread), now
+   also returns `seen`/`flagged` per hit: `{"keyword":"AMRITA","since":"25-Jun-2026","max":30}`.
+   Useful for finding older threads on the same topic (e.g. checking whether someone already
+   emailed twice, or already got a personal reply).
+3. **`sent_scan`** (read-only) — search the `INBOX.Sent` folder the same way, to check whether a
+   personal confirmation was **already sent** before sending another one. This site's actual
+   confirmation style is terse — e.g. `"Confirmam."` or `"Confirmam participarea dumneavoastra."`
+   — match that tone, don't write a paragraph.
+4. Cross-check candidates against the *target* CSV/table before adding (`mm_initiation.csv`,
+   `ks26.csv`, Airtable Students) — many flagged inquiries turn out to already be recorded from a
+   prior pass; those just need marking read, no new write or email.
+5. **`email_flag`** now accepts `{"uid":N,"flag":false,"mark_seen":true}` (in addition to the
+   original `{"num":N,"flag":bool}` form) to clear `\Flagged` **and** set `\Seen` in one call for a
+   specific message found via `flagged_scan`/`email_search`.
+
+Routing by event (as of 2026-07):
+- **AMRITA SHAKTIPATA** (Bucharest ceremony) → `mm_initiation.csv` via `csv_append`, `part:"new"`.
+  Eligibility (`mm_initiation.html`'s `checkEligibility`) requires a prior `Part 1`/`Part 2`
+  (aprofundare workshop) row for that email/name.
+- **Inițiere Rudra-Șiva** (KS26 retreat's initiation add-on, *not* the retreat itself) →
+  `ks26.csv`'s `rudra` column (`Cluj`/`Bucuresti`/`Costinesti`) via `ks26_upsert`. Selecting a
+  location in the app *is* the confirmation, per the admin's own past reply: "în aplicație vă
+  înscrieți pentru inițiere în momentul în care alegeți locația la care participați." If a second
+  person shares one email (e.g. a couple registering together) and only one already has a
+  `ks26.csv` row, `ks26_upsert`'s dedupe key is `email+session` — give the second person a
+  different `session` value (there's no real distinguishing session, so this is just a key trick)
+  so their row doesn't overwrite the first person's.
+- Confirmation emails go out via `send_admin` (`{to, subject, message}`) — this also archives a
+  copy to `INBOX.Sent`, matching how the admin's manual replies show up.
+- Anything outside these two specific events found during a sweep (other mantra rounds, other
+  cities, unrelated questions) — leave untouched; those need a human answer, not a mechanical add.
 
 ## In-app version
 The same flow is available to the admin directly in `yoga.html` — a command console fixed at the
