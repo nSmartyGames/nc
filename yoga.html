@@ -832,7 +832,7 @@ function cmdRun(){
     cmdCopyEmails(raw.replace(/^\S+\s*/,''));
   } else if(cmd==='help'||cmd==='?'){
     cmdShow('<div class="cmd-muted">Commands:<br>'
-      +'&nbsp;<b style="color:#d4a017">/daily-orders [days]</b> — scan unread orders (default 2 days), review, insert, mark read<br>'
+      +'&nbsp;<b style="color:#d4a017">/daily-orders [days]</b> — scan unread + flagged orders (default 2 days), review, insert, mark read<br>'
       +'&nbsp;<b style="color:#d4a017">/copy &lt;course&gt; [group|live|replay] [paid|unpaid|all]</b> — copy emails to clipboard, ;-separated<br>'
       +'&nbsp;<span class="cmd-muted">e.g. <i>/copy kashmir paid live</i> · <i>/copy ks26 both</i> (live+replay deduped) · <i>/copy ytt-m1 g6</i></span><br>'
       +'&nbsp;<b style="color:#d4a017">/clear</b> — clear console output</div>');
@@ -917,13 +917,13 @@ function cmdInsertable(o){
 }
 
 async function cmdDailyOrders(days){
-  cmdShow('<span class="cmd-muted">Scanning unread orders (last '+days+' days)… read-only, nothing marked.</span>');
+  cmdShow('<span class="cmd-muted">Scanning unread + flagged orders (last '+days+' days)… read-only, nothing marked.</span>');
   try{
     var res=await fetch(PROXY+'?action=orders_scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({days:days})});
     var j=await res.json();
     if(j.error){cmdShow('<span class="cmd-err">IMAP/scan error: '+cmdEsc(j.error)+'</span>');return;}
     _cmdOrders=j.orders||[];
-    if(!_cmdOrders.length){cmdShow('<span class="cmd-ok">No unread orders since '+cmdEsc(j.since)+'. Nothing to do.</span>');return;}
+    if(!_cmdOrders.length){cmdShow('<span class="cmd-ok">No unread/flagged orders since '+cmdEsc(j.since)+'. Nothing to do.</span>');return;}
     cmdRenderOrders(j.since);
   }catch(e){cmdShow('<span class="cmd-err">Error: '+cmdEsc(e.message)+'</span>');}
 }
@@ -939,6 +939,7 @@ function cmdRenderOrders(since){
     else if(!c.has_course)            flag='<span class="ord-flag">⚠ exists, no '+cmdEsc(o.course)+' sub (verify key)</span>';
     else if(c.already_paid)           flag='<span class="ord-dup">DUP — next='+cmdEsc(c.next)+'</span>';
     else                              flag='<span class="cmd-muted">ok curr='+cmdEsc(c.curr)+' G='+cmdEsc(c.group)+'</span>';
+    if(o.flagged) flag='🚩 '+flag;
     var cg=cmdEsc(o.course)+(o.group?' G'+cmdEsc(o.group):'');
     var checked=(ins.ok && !c.already_paid)?'checked':'';
     var dis=ins.ok?'':'disabled';
@@ -955,7 +956,7 @@ function cmdRenderOrders(since){
       +'</tr>';
   });
   cmdShow(
-    '<div style="margin-bottom:4px"><b style="color:#d4a017">'+_cmdOrders.length+'</b> unread order(s) since '+cmdEsc(since)
+    '<div style="margin-bottom:4px"><b style="color:#d4a017">'+_cmdOrders.length+'</b> unread/flagged order(s) since '+cmdEsc(since)
     +'. <span class="cmd-muted">Checked = will set next=P. Unchecked/greyed = handle manually.</span></div>'
     +'<table class="ord-tbl"><thead><tr><th>✓</th><th>#</th><th>Date</th><th>Name</th><th>Email</th><th>Course/Grp</th><th>Sum</th><th>Nota</th><th>Check</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table>'

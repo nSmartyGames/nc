@@ -1,6 +1,6 @@
 ---
 name: daily-orders
-description: Daily intake of new WooCommerce yoga orders. Use when the user asks to "process orders", "fetch today's orders/payments", "add the iulie/monthly payments", or do the daily order-to-Airtable run. Scans unread order emails (read-only), checks Airtable for duplicates, bulk-inserts next-month payments, and marks the emails read.
+description: Daily intake of new WooCommerce yoga orders. Use when the user asks to "process orders", "fetch today's orders/payments", "add the iulie/monthly payments", or do the daily order-to-Airtable run. Scans unread AND flagged order emails (read-only), checks Airtable for duplicates, bulk-inserts next-month payments, and marks the emails read (clearing any flag).
 ---
 
 # Daily Orders
@@ -18,8 +18,11 @@ Proxy endpoints used: `orders_scan` (read-only), `upsert_sub`, `orders_mark` (in
 ```
 python3 .claude/skills/daily-orders/orders.py scan 2
 ```
-`2` = look back 2 days (today + yesterday). Returns a table + JSON with, per order:
-`onum, date, name, email, course, group, total, nota, month` and a `check` block
+`2` = look back 2 days (today + yesterday). Returns **unread orders since that date, plus any
+order emails manually `\Flagged`** in the mailbox regardless of read state (`flagged: true` on
+those rows, shown as `[FLAGGED]` in the table) — flagging is how the admin marks an order for a
+later look, so it's always worth a pass. Returns a table + JSON with, per order:
+`onum, date, name, email, course, group, total, nota, month, flagged` and a `check` block
 (`student_exists`, `has_course`, `curr`, `next`, `already_paid`).
 
 ### 2. Present the list to the user
@@ -28,7 +31,13 @@ The `already_paid=true` flag means `next` is already set for that course → lik
 payment**; call it out, don't silently re-insert.
 
 ### 3. Decide what to insert — these are NOT auto-monthly, handle by hand:
-- **KS26 / "Kashmir Shaivism"** — separate retreat flow, not a monthly sub. Exclude from `insert`.
+- **KS26 / "Kashmir Shaivism"** — separate retreat flow, goes to `ks26.csv` (not the Students
+  table). `insert` auto-routes rows with `course:"KS26"` to `ks26_upsert` instead of `upsert_sub`
+  — pass `{name, email, course:"KS26", tax, session}` (`tax` = amount paid, `session` = `live` /
+  `replay` / `both`). The combo product (titled **"KS26 live and replay"**, formerly "Replay
+  session for live subscription" / "Sesiune de revizionare pentru cei care au participat live")
+  always means `session:"both"` — stored/shown as **L+R** in `ks26.html`. `check.already_paid` for
+  KS26 rows means that email+session pair is already in `ks26.csv`, not an Airtable dup.
 - **AL "Seminar N" / Alchimie seminars** — one-off seminars, not the AL monthly course. Exclude.
 - **Course key typos in Airtable** (e.g. `TTY-M3` instead of `YTT-M3`): `upsert_sub` would create a
   *second* key. Fix the existing record directly via `?action=update&id=recXXX` instead.
@@ -56,8 +65,8 @@ curl -s "https://nicolaecatrina.com/app/airtable-proxy.php?action=students" | \
 
 ### 6. Mark emails read (only after the user is satisfied)
 Pass the buyer names of the orders just processed; this marks the order emails **and** the matching
-NETOPIA `Plată înregistrată - Self Awakening` confirmations read. Add `-f` to also clear
-`Comandă eșuată` / `Failed order` emails.
+NETOPIA `Plată înregistrată - Self Awakening` confirmations read, and **clears `\Flagged` on any of
+them that were flagged**. Add `-f` to also clear `Comandă eșuată` / `Failed order` emails.
 ```
 echo '["Buyer One","Buyer Two"]' | python3 .claude/skills/daily-orders/orders.py mark - -f
 ```
@@ -69,7 +78,9 @@ selected → mark read, all via the same proxy endpoints. This skill is the CLI/
 
 ## Notes
 - `orders_scan` opens the mailbox `OP_READONLY` + `FT_PEEK`, so scanning/listing never changes
-  read state. Only step 6 (`orders_mark`) sets `\Seen`.
+  read or flag state. Only step 6 (`orders_mark`) sets `\Seen` / clears `\Flagged`.
+- Scan matches `UNSEEN SINCE <date>` **or** `FLAGGED SINCE <date>` (union, deduped by UID) — a
+  flagged order older than the lookback window won't surface; widen `days` if chasing one down.
 - Status values: `P` paid, `F` forever, `G` gratis, `S` stop. Daily orders are normal `P`.
 - Month transition (June→July etc.) is run separately in `yoga.html`; this skill only sets `next`.
-- If `scan` returns `count: 0`, there are no new unread orders — nothing to do.
+- If `scan` returns `count: 0`, there are no new unread/flagged orders — nothing to do.

@@ -3,12 +3,13 @@
 
 Talks to the production proxy (airtable-proxy.php). Three subcommands:
 
-  scan   [days]                 Read-only scan of unread WooCommerce orders + Airtable dup-check.
-                                Prints a table and the raw JSON. NEVER marks emails read.
+  scan   [days]                 Read-only scan of unread + flagged WooCommerce orders + Airtable
+                                dup-check. Prints a table and the raw JSON. NEVER marks emails read.
   insert <rows.json | ->        Bulk-apply next-month payments (sets next='P') via upsert_sub.
                                 rows = [{"name","email","course","group"}]. '-' reads stdin.
-  mark   <names.json | -> [-f]  Mark order emails + matching NETOPIA confirmations read.
-                                names = ["Buyer Name", ...]. -f also marks failed orders.
+  mark   <names.json | -> [-f]  Mark order emails + matching NETOPIA confirmations read (and
+                                clears \Flagged on them). names = ["Buyer Name", ...].
+                                -f also marks failed orders.
 
 Course ids: YTT-M1 YTT-M2 YTT-M3 "I Ching" AL.  KS26 / seminars are NOT monthly subs — handle by hand.
 """
@@ -30,16 +31,19 @@ def scan(days=2):
     if r.get("error"):
         print("ERROR:", r["error"]); sys.exit(1)
     orders = r.get("orders", [])
-    print(f"# {r['count']} unread order(s) since {r['since']}\n")
+    print(f"# {r['count']} unread/flagged order(s) since {r['since']}\n")
     hdr = f"{'#':>6} {'Date':16} {'Name':24} {'Email':32} {'Course/Grp':13} {'Sum':>8}  Check"
     print(hdr); print("-" * len(hdr))
     for o in orders:
         cg = o["course"] + (" G" + o["group"] if o["group"] else "")
         c = o.get("check", {})
-        if not c.get("student_exists"): flag = "NEW student"
-        elif not c.get("has_course"):   flag = f"no {o['course']} sub (curr courses differ)"
-        elif c.get("already_paid"):     flag = f"ALREADY PAID next={c.get('next')!r}"
-        else:                           flag = f"ok curr={c.get('curr')!r} G={c.get('group')!r}"
+        if o["course"] == "KS26":
+            flag = f"ALREADY IN ks26.csv (session={o.get('session')!r})" if c.get("already_paid") else f"new — session={o.get('session')!r}"
+        elif not c.get("student_exists"): flag = "NEW student"
+        elif not c.get("has_course"):     flag = f"no {o['course']} sub (curr courses differ)"
+        elif c.get("already_paid"):       flag = f"ALREADY PAID next={c.get('next')!r}"
+        else:                             flag = f"ok curr={c.get('curr')!r} G={c.get('group')!r}"
+        if o.get("flagged"): flag = "[FLAGGED] " + flag
         print(f"{o['onum']:>6} {o['date']:16} {o['name'][:24]:24} {o['email'][:32]:32} {cg:13} {o['total']:>8}  {flag}")
     print("\n--- JSON ---")
     print(json.dumps(orders, ensure_ascii=False, indent=2))
@@ -48,11 +52,18 @@ def insert(arg):
     rows = _load(arg)
     for row in rows:
         try:
-            r = call("upsert_sub", {"name": row.get("name", ""), "email": row["email"],
-                                    "course": row["course"], "group": str(row.get("group", "")),
-                                    "status": row.get("status", "P")})
-            print(f"{r.get('action','?'):8} {row['email']:34} {row['course']:8} "
-                  f"G{row.get('group') or '-'}  {r.get('name','')}")
+            if row.get("course") == "KS26":
+                r = call("ks26_upsert", {"name": row.get("name", ""), "email": row["email"],
+                                         "tax": str(row.get("tax", "")), "session": row.get("session", "live"),
+                                         "notes": row.get("notes", "")})
+                print(f"{r.get('action','?'):8} {row['email']:34} {'KS26':8} "
+                      f"{row.get('session','live')}")
+            else:
+                r = call("upsert_sub", {"name": row.get("name", ""), "email": row["email"],
+                                        "course": row["course"], "group": str(row.get("group", "")),
+                                        "status": row.get("status", "P")})
+                print(f"{r.get('action','?'):8} {row['email']:34} {row['course']:8} "
+                      f"G{row.get('group') or '-'}  {r.get('name','')}")
         except Exception as e:
             print(f"ERROR    {row.get('email','?')}  {row.get('course','?')}  -> {e}")
 

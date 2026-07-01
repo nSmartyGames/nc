@@ -137,8 +137,15 @@ function ncParseEmail($subj, $body, $from_name, $from_email, $reply_to, $cat) {
     foreach ($month_map as $pat => $name) {
         if (preg_match('/\b' . preg_quote($pat, '/') . '\b/i', $t)) { $p['month'] = $name; break; }
     }
-    // KS26 session
-    if ($cat === 'ks26' && preg_match('/replay/i', $body)) $p['session'] = 'replay';
+    // KS26 session — "live and replay" combo product (old title: "Replay session for live
+    // subscription" / "Sesiune de revizionare pentru cei care au participat live"; new title:
+    // "KS26 live and replay") always grants both → saved as 'both' (shown as L+R in ks26.html)
+    if ($cat === 'ks26') {
+        if (preg_match('/live\s*(?:and|&|\+|si|și)\s*replay|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/i', $subj . ' ' . $body))
+            $p['session'] = 'both';
+        elseif (preg_match('/replay/i', $body))
+            $p['session'] = 'replay';
+    }
     return $p;
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -179,7 +186,7 @@ function ncUpsertSub($em, $nm, $crs, $grp, $sts, $TBL_S) {
 // ── WooCommerce order parser (product-line first; more precise than ncParseEmail)
 function ncParseOrder($subj, $body) {
     $flat = trim(preg_replace('/\s+/', ' ', $body));
-    $o = ['onum'=>'', 'name'=>'', 'email'=>'', 'course'=>'', 'group'=>'', 'total'=>'', 'nota'=>'', 'month'=>''];
+    $o = ['onum'=>'', 'name'=>'', 'email'=>'', 'course'=>'', 'group'=>'', 'total'=>'', 'nota'=>'', 'month'=>'', 'session'=>''];
     if (preg_match('/\((\d+)\)/', $subj, $m)) $o['onum'] = $m[1];
     // Buyer name
     if (preg_match('/(?:comand[ăa] de la|order from) (.+?):/iu', $flat, $m)) $o['name'] = trim($m[1]);
@@ -194,14 +201,27 @@ function ncParseOrder($subj, $body) {
     // Nota
     if (preg_match('/(?:Not[ăa]|Note):\s*(.+?)\s*(?:Adres[ăa] de facturare|Billing address)/iu', $flat, $m))
         $o['nota'] = trim($m[1]);
+    $o['product'] = trim($prod);
     // Course from product line, fallback nota
     $hay = strtolower($prod . ' ' . $o['nota']);
     if      (preg_match('/iching|i ching/', $hay))                       $o['course'] = 'I Ching';
-    elseif  (preg_match('/kashmir/', $hay))                              $o['course'] = 'KS26';
+    elseif  (preg_match('/kashmir|ks\s*26|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/', $hay))
+                                                                          $o['course'] = 'KS26';
     elseif  (preg_match('/alchim/', $hay))                               $o['course'] = 'AL';
     elseif  (preg_match('/m3|modul(?:ul)? 3|module 3/', $hay))           $o['course'] = 'YTT-M3';
     elseif  (preg_match('/m2|modul(?:ul)? 2|module 2/', $hay))           $o['course'] = 'YTT-M2';
     elseif  (preg_match('/m1|modul(?:ul)? 1|module 1/', $hay))           $o['course'] = 'YTT-M1';
+    // KS26 session — combo product (old title: "Replay session for live subscription" /
+    // "Sesiune de revizionare pentru cei care au participat live"; new title: "KS26 live and
+    // replay") always grants both → 'both' (shown as L+R in ks26.html)
+    if ($o['course'] === 'KS26') {
+        if (preg_match('/live\s*(?:and|&|\+|si|și)\s*replay|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/i', $prod . ' ' . $o['nota']))
+            $o['session'] = 'both';
+        elseif (preg_match('/replay/i', $prod))
+            $o['session'] = 'replay';
+        else
+            $o['session'] = 'live';
+    }
     // Group from product line first, then nota
     foreach ([$prod, $o['nota']] as $txt) {
         if (preg_match('/gr(?:upa|\.|\b)?\s*([0-9])/i', $txt, $m)) { $o['group'] = $m[1]; break; }
@@ -850,19 +870,66 @@ switch ($action) {
         echo json_encode(['ok' => true, 'total' => count($nums), 'results' => $results]);
         break;
 
+    case 'sent_scan':
+        // Scan INBOX.Sent folder; returns To: recipients + subject + date
+        $since_raw = trim($body['since'] ?? '19-Jun-2026');
+        $max_s     = intval($body['max'] ?? 100);
+        $kw_s      = trim($body['keyword'] ?? '');
+        $imap_base = '{mail.nicolaecatrina.com:993/imap/ssl/novalidate-cert}';
+        $mbox = @imap_open($imap_base . 'INBOX.Sent', IMAP_USER, IMAP_PASS, OP_READONLY, 1);
+        if (!$mbox) { echo json_encode(['error' => 'IMAP Sent: ' . imap_last_error()]); break; }
+        $crit = 'SINCE "' . addslashes($since_raw) . '"';
+        if ($kw_s) $crit .= ' TEXT "' . addslashes($kw_s) . '"';
+        $nums = imap_search($mbox, $crit) ?: [];
+        rsort($nums);
+        $nums = array_slice($nums, 0, $max_s);
+        $results = [];
+        foreach ($nums as $num) {
+            $hdr  = imap_headerinfo($mbox, $num);
+            $to_list = [];
+            foreach ((array)($hdr->to ?? []) as $t) {
+                $te = ($t->mailbox ?? '') . '@' . ($t->host ?? '');
+                $tn = ncDecodeHeader($t->personal ?? '');
+                $to_list[] = ['name' => $tn, 'email' => $te];
+            }
+            $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
+            $dstr = date('d M Y, H:i', strtotime($hdr->date ?? 'now'));
+            $struct = imap_fetchstructure($mbox, $num);
+            $btxt = mb_substr(trim(ncGetBody($mbox, $num, $struct)), 0, 400);
+            $results[] = ['num' => $num, 'to' => $to_list, 'subject' => $subj, 'date' => $dstr, 'body' => $btxt];
+        }
+        imap_close($mbox);
+        echo json_encode(['ok' => true, 'total' => count($results), 'results' => $results]);
+        break;
+
     case 'orders_scan':
         // Read-only scan of unread WooCommerce orders + Airtable duplicate check. Never marks \Seen.
         $days  = max(1, intval($body['days'] ?? 2));
         $since = date('d-M-Y', strtotime("-" . ($days - 1) . " days"));
         $mbox  = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, OP_READONLY, 1);
         if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
-        $uids  = imap_search($mbox, 'UNSEEN SINCE "' . $since . '"', SE_UID) ?: [];
+        // Unread orders + manually-flagged ones (flagged = held for later review, still worth a pass)
+        $unseenUids  = imap_search($mbox, 'UNSEEN SINCE "' . $since . '"', SE_UID) ?: [];
+        $flaggedUids = imap_search($mbox, 'FLAGGED SINCE "' . $since . '"', SE_UID) ?: [];
+        $uids = array_values(array_unique(array_merge($unseenUids, $flaggedUids)));
         // Load students once for dup-check
         $all = atAll("$TBL_S?" . 'fields[]=fldTKQVFs3vrMrwWA&fields[]=fld4Lx0LL4sfYOyy7&fields[]=fldUvZSA5jTlsLQFH');
         $byEmail = [];
         foreach (($all['records'] ?? []) as $rec) {
             $em = strtolower(trim($rec['fields']['email'] ?? ''));
             if ($em) $byEmail[$em] = $rec['fields'];
+        }
+        // Load ks26.csv once for KS26 dup-check (email+session pair already recorded)
+        $ks26Seen = [];
+        $ks26f = __DIR__ . '/ks26.csv';
+        if (file_exists($ks26f) && ($ks26fh = fopen($ks26f, 'r')) !== false) {
+            fgetcsv($ks26fh);
+            while (($ks26r = fgetcsv($ks26fh)) !== false) {
+                $ks26em = strtolower(trim($ks26r[1] ?? ''));
+                $ks26se = strtolower(trim($ks26r[3] ?? 'live')) ?: 'live';
+                if ($ks26em) $ks26Seen[$ks26em . '|' . $ks26se] = true;
+            }
+            fclose($ks26fh);
         }
         $orders = [];
         foreach ($uids as $uid) {
@@ -872,22 +939,27 @@ switch ($action) {
             if (!preg_match('/^\s*(Comand[ăa] nou[ăa] de la client|New order)/iu', $subj)) continue;
             $btxt = ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no));
             $p = ncParseOrder($subj, $btxt);
-            $p['uid']  = $uid;
+            $p['uid']     = $uid;
+            $p['flagged'] = in_array($uid, $flaggedUids);
             $p['date'] = date('Y-m-d H:i', strtotime($hdr->date ?? 'now'));
             // Duplicate / already-paid check
-            $f = $byEmail[strtolower($p['email'])] ?? null;
-            $dup = null;
-            if ($f) {
-                $subs = json_decode($f['subscriptions'] ?? '{}', true) ?: [];
-                $e = $subs[$p['course']] ?? null;
-                $dup = ['student_exists' => true,
-                        'has_course'  => $e !== null,
-                        'curr'        => $e['curr'] ?? null,
-                        'next'        => $e['next'] ?? null,
-                        'group'       => $e['G'] ?? null,
-                        'already_paid'=> $e !== null && !empty($e['next']) && $e['next'] !== 'S'];
+            if ($p['course'] === 'KS26') {
+                $key = strtolower($p['email']) . '|' . ($p['session'] ?: 'live');
+                $dup = ['student_exists' => isset($ks26Seen[$key]), 'already_paid' => isset($ks26Seen[$key])];
             } else {
-                $dup = ['student_exists' => false];
+                $f = $byEmail[strtolower($p['email'])] ?? null;
+                if ($f) {
+                    $subs = json_decode($f['subscriptions'] ?? '{}', true) ?: [];
+                    $e = $subs[$p['course']] ?? null;
+                    $dup = ['student_exists' => true,
+                            'has_course'  => $e !== null,
+                            'curr'        => $e['curr'] ?? null,
+                            'next'        => $e['next'] ?? null,
+                            'group'       => $e['G'] ?? null,
+                            'already_paid'=> $e !== null && !empty($e['next']) && $e['next'] !== 'S'];
+                } else {
+                    $dup = ['student_exists' => false];
+                }
             }
             $p['check'] = $dup;
             $orders[] = $p;
@@ -909,16 +981,30 @@ switch ($action) {
         $markFailed = !empty($body['mark_failed']);
         $mbox = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, 0, 1); // read-write
         if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
-        $uids = imap_search($mbox, 'UNSEEN', SE_UID) ?: [];
+        // Unread + flagged — flagged copies get unflagged too once processed
+        $unseenUids  = imap_search($mbox, 'UNSEEN', SE_UID) ?: [];
+        $flaggedUids = imap_search($mbox, 'FLAGGED', SE_UID) ?: [];
+        $uids = array_values(array_unique(array_merge($unseenUids, $flaggedUids)));
         $r = ['orders'=>0, 'confirmations'=>0, 'failed'=>0];
+        $done = function($mbox, $uid) {
+            imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID);
+            imap_clearflag_full($mbox, (string)$uid, "\\Flagged", ST_UID);
+        };
         foreach ($uids as $uid) {
             $no   = imap_msgno($mbox, $uid);
             $subj = ncDecodeHeader(imap_headerinfo($mbox, $no)->subject ?? '');
             if (preg_match('/^\s*(Comand[ăa] nou[ăa] de la client|New order)/iu', $subj)) {
-                imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['orders']++; continue;
+                $obtxt = ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no));
+                $obuyer = ncParseOrder($subj, $obtxt)['name'];
+                $obn = trim(preg_replace('/\s+/', ' ', strtolower(preg_replace('/[^a-z ]/', ' ',
+                        strtolower(@iconv('UTF-8','ASCII//TRANSLIT', $obuyer))))));
+                if ($obn && isset($nameset[$obn])) {
+                    $done($mbox, $uid); $r['orders']++;
+                }
+                continue;
             }
             if ($markFailed && preg_match('/comand[ăa]\s+e[șs]uat[ăa]|failed order/iu', $subj)) {
-                imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['failed']++; continue;
+                $done($mbox, $uid); $r['failed']++; continue;
             }
             if (preg_match('/plat[ăa]\s+[îi]nregistrat[ăa]\s*-\s*self awakening/iu', $subj)) {
                 $flat = preg_replace('/\s+/', ' ', ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no)));
@@ -928,7 +1014,7 @@ switch ($action) {
                 $bn = trim(preg_replace('/\s+/', ' ', strtolower(preg_replace('/[^a-z ]/', ' ',
                         strtolower(@iconv('UTF-8','ASCII//TRANSLIT', $buyer))))));
                 if ($bn && isset($nameset[$bn])) {
-                    imap_setflag_full($mbox, (string)$uid, "\\Seen", ST_UID); $r['confirmations']++;
+                    $done($mbox, $uid); $r['confirmations']++;
                 }
             }
         }
