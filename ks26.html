@@ -26,6 +26,7 @@ th{color:#5ab0e0;padding:8px 10px;text-align:left;font-size:12px;font-weight:600
 td{padding:7px 10px;border-bottom:1px solid #0d1e30;vertical-align:middle}
 tbody tr:hover td{background:#0d1e30}
 .tx{display:inline-block;padding:2px 9px;border-radius:4px;font-size:12px;font-weight:700}
+.tx-100{background:#1a2030;color:#60a0d0}
 .tx-840{background:#0f2a1a;color:#5ec87a}
 .tx-1050{background:#1a2a0f;color:#a0c850}
 .tx-630{background:#122a12;color:#7ec850}
@@ -34,6 +35,8 @@ tbody tr:hover td{background:#0d1e30}
 .tx-P{background:#2a1e00;color:#e0a040}
 .tx-e{color:#333;font-size:12px}
 .note-cell{color:#4a7a8a;font-size:12px}
+.xfer-btn{background:none;border:none;color:#5ab0e0;opacity:.45;font-size:12px;cursor:pointer;padding:0 2px;font-family:inherit}
+.xfer-btn:hover{opacity:1}
 .num{color:#1a4a6a;font-size:12px;text-align:right;width:34px}
 #sy{height:20px;color:#5ab0e0;font-size:13px;margin-bottom:8px}
 .add-section{margin-bottom:10px;border-bottom:1px solid #1e4a6a;padding-bottom:10px;display:none}
@@ -60,6 +63,7 @@ select option{background:#0d1e30}
 <div class="tab-bar">
   <button class="tab on" id="tabL" onclick="setTab('live')">Live <span id="cntL"></span></button>
   <button class="tab" id="tabR" onclick="setTab('replay')">Replay <span id="cntR"></span></button>
+  <button class="tab" id="tabB" onclick="setTab('both')">L+R <span id="cntB"></span></button>
   <span class="stat-line" id="statLine"></span>
   <button class="btn" onclick="copyPaid()" style="margin-left:auto">Copy paid emails</button>
 </div>
@@ -70,6 +74,7 @@ select option{background:#0d1e30}
     <input id="aN" placeholder="Name" style="width:180px">
     <input id="aE" placeholder="Email" style="width:200px">
     <select id="aT">
+      <option value="100">100 RON (L+R)</option>
       <option value="505">505 RON</option>
       <option value="840">840 RON (early bird)</option>
       <option value="1050">1050 RON (regular)</option>
@@ -81,6 +86,7 @@ select option{background:#0d1e30}
     <select id="aS">
       <option value="live">live</option>
       <option value="replay">replay</option>
+      <option value="both">L+R (both)</option>
     </select>
     <input id="aNote" placeholder="Notes" style="width:160px">
     <button class="btn" onclick="addRow()">Save</button>
@@ -136,6 +142,7 @@ function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 
 function txBadge(t) {
   t = (t||'').trim();
+  if (t === '100')                       return '<span class="tx tx-100">100 RON</span>';
   if (t === '505')                       return '<span class="tx tx-505">505 RON</span>';
   if (t === '840')                       return '<span class="tx tx-840">840 RON</span>';
   if (t === '1050')                      return '<span class="tx tx-1050">1050 RON</span>';
@@ -146,12 +153,13 @@ function txBadge(t) {
   return '<span class="tx tx-P">' + esc(t) + '</span>';
 }
 
-function isPaid(t) { t=(t||'').trim(); return t==='505'||t==='840'||t==='1050'||t==='630'||t==='G'||t==='pending'; }
+function isPaid(t) { t=(t||'').trim(); return t==='100'||t==='505'||t==='840'||t==='1050'||t==='630'||t==='G'||t==='pending'; }
 
 function setTab(t) {
   tab = t;
   document.getElementById('tabL').className = 'tab' + (t==='live'  ? ' on' : '');
   document.getElementById('tabR').className = 'tab' + (t==='replay'? ' on' : '');
+  document.getElementById('tabB').className = 'tab' + (t==='both'  ? ' on' : '');
   render();
 }
 
@@ -166,8 +174,10 @@ function render() {
   });
   var lc = data.filter(function(r){ return r.session==='live';   }).length;
   var rc = data.filter(function(r){ return r.session==='replay'; }).length;
+  var bc = data.filter(function(r){ return r.session==='both';   }).length;
   document.getElementById('cntL').textContent = lc ? '('+lc+')' : '';
   document.getElementById('cntR').textContent = rc ? '('+rc+')' : '';
+  document.getElementById('cntB').textContent = bc ? '('+bc+')' : '';
 
   var paid = cur.filter(function(r){ return isPaid(r.tax); }).length;
   var pend = cur.filter(function(r){ return (r.tax||'').trim().toLowerCase()==='pending'; }).length;
@@ -183,7 +193,7 @@ function render() {
     var rudraCell = r.rudra ? '<span style="color:#4caf50;font-weight:700;font-size:13px">'+esc(r.rudra)+'</span>' : '<span style="opacity:.3">—</span>';
     html += '<tr data-idx="'+idx+'"><td style="text-align:center;padding:4px"><button onclick="deleteRow('+idx+',event)" style="background:none;border:none;color:#4a2a2a;font-size:15px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1" onmouseover="this.style.color=\'#e05050\'" onmouseout="this.style.color=\'#4a2a2a\'">✕</button></td><td class="num">'+(i+1)+'</td>'
           + '<td data-field="name">'+esc(r.name)+'</td>'
-          + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+'</td>'
+          + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+' <button class="xfer-btn" onclick="event.stopPropagation();transferMenuBtn(this)" title="Move/copy session">⇄</button></td>'
           + '<td data-field="tax">'+txBadge(r.tax)+'</td>'
           + '<td data-field="notes" class="note-cell">'+esc(r.notes)+'</td>'
           + '<td data-field="rudra" style="text-align:center;cursor:pointer">'+rudraCell+'</td></tr>';
@@ -257,7 +267,7 @@ async function load() {
   } catch(e) { sy('Load failed: '+e.message); }
 }
 
-var TAX_OPTS   = ['505','840','1050','630','G','pending',''];
+var TAX_OPTS   = ['100','505','840','1050','630','G','pending',''];
 var RUDRA_OPTS = ['Cluj','Bucuresti','Costinesti',''];
 
 function makeEditable(td, r, field) {
@@ -295,7 +305,7 @@ function makeEditable(td, r, field) {
     fetch(PROXY + '?action=ks26_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        orig_email: origEmail,
+        orig_email: origEmail, orig_session: r.session,
         name: r.name, email: r.email, tax: r.tax,
         session: r.session, notes: r.notes, rudra: r.rudra || ''
       })
@@ -311,13 +321,82 @@ function makeEditable(td, r, field) {
   });
 }
 
+var SESSION_LABELS = {live:'Live', replay:'Replay', both:'L+R'};
+
+function transferMenu(td, r) {
+  if (td.querySelector('select')) return;
+  var oldSession = r.session;
+  var el = document.createElement('select');
+  ['live','replay','both'].forEach(function(v) {
+    var o = document.createElement('option');
+    o.value = v;
+    o.textContent = SESSION_LABELS[v];
+    if (v === oldSession) o.selected = true;
+    el.appendChild(o);
+  });
+  el.style.cssText = 'background:#080f1a;color:#c0d8ec;border:1px solid #5ab0e0;border-radius:3px;padding:2px 6px;font-size:13px;font-family:inherit';
+  td.innerHTML = '';
+  td.appendChild(el);
+  el.focus();
+
+  function commit() {
+    var newSession = el.value;
+    if (newSession === oldSession) { render(); return; }
+    // Live → L+R is a copy: keep the existing Live row untouched, add a separate L+R row.
+    // Every other transition (replay→both, both→live, etc.) is a move of the one row.
+    if (oldSession === 'live' && newSession === 'both') {
+      fetch(PROXY + '?action=ks26_append', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          name: r.name, email: r.email, tax: r.tax,
+          session: 'both', notes: r.notes, rudra: r.rudra || ''
+        })
+      }).then(function(res){ return res.json(); }).then(function(j){
+        if (j.error) { sy('Save error: ' + j.error); render(); return; }
+        data.push({name: r.name, email: r.email, tax: r.tax, session: 'both', notes: r.notes, rudra: r.rudra || ''});
+        sy('Copied ' + (r.name || r.email) + ' to ' + SESSION_LABELS.both);
+        setTimeout(function(){ sy(''); }, 3000);
+        render();
+      }).catch(function(e){ sy('Save error: '+e.message); render(); });
+      return;
+    }
+    r.session = newSession;
+    fetch(PROXY + '?action=ks26_edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orig_email: r.email, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
+        session: r.session, notes: r.notes, rudra: r.rudra || ''
+      })
+    }).then(function(res){ return res.json(); }).then(function(j){
+      if (j.error) { sy('Save error: ' + j.error); r.session = oldSession; render(); return; }
+      sy('Moved ' + (r.name || r.email) + ' to ' + SESSION_LABELS[newSession]);
+      setTimeout(function(){ sy(''); }, 3000);
+      render();
+    }).catch(function(e){ sy('Save error: '+e.message); r.session = oldSession; render(); });
+  }
+
+  el.addEventListener('change', commit);
+  el.addEventListener('blur', function(){ render(); });
+  el.addEventListener('keydown', function(e){ if (e.key === 'Escape') render(); });
+}
+
+function transferMenuBtn(btn) {
+  var td = btn.closest('td[data-field]');
+  var tr = td.closest('tr[data-idx]');
+  if (!tr) return;
+  var r = data[parseInt(tr.getAttribute('data-idx'))];
+  if (r) transferMenu(td, r);
+}
+
 document.getElementById('tbody').addEventListener('click', function(e) {
   var td = e.target.closest('td[data-field]');
   if (!td) return;
   var tr = td.closest('tr[data-idx]');
   if (!tr) return;
   var r = data[parseInt(tr.getAttribute('data-idx'))];
-  if (r) makeEditable(td, r, td.getAttribute('data-field'));
+  if (!r) return;
+  var field = td.getAttribute('data-field');
+  makeEditable(td, r, field);
 });
 
 
@@ -329,7 +408,7 @@ async function deleteRow(idx, e) {
   try {
     var res = await fetch(PROXY+'?action=ks26_delete', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: r.email})
+      body: JSON.stringify({email: r.email, session: r.session})
     });
     var j = await res.json();
     if (j.error) { sy('Error: '+j.error); return; }

@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yoga Subscribers</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;padding:16px;min-height:100vh}
+.course-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.course-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cbadge{background:#2e2000;border:1px solid #7a5c00;color:#d4a017;border-radius:8px;padding:5px 14px;font-size:17px;font-weight:700;cursor:pointer;position:relative;user-select:none}
+.cbadge.active{background:#5a3a00;border-color:#f0c030;color:#f0c030}
+.cbadge .tip{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:6px 12px;font-size:11px;white-space:nowrap;z-index:99;pointer-events:none;font-weight:400}
+.cbadge:hover .tip{display:block}
+.gbt{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:7px;padding:5px 14px;font-size:15px;cursor:pointer;font-weight:500}
+.gbt:hover{border-color:#d4a017}
+.gbt.on{background:#3a2e00;border-color:#d4a017;color:#f0c030}
+.bar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.abtn{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:5px 14px;font-size:15px;cursor:pointer}
+.abtn:hover{border-color:#d4a017}
+#sy{font-size:14px;color:#888;margin-left:auto}
+.tw{overflow-x:auto;border-radius:8px;border:1px solid #333}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+col.cn{width:26%}col.ce{width:34%}col.cm{width:20%}
+thead tr.fr th{background:#111;padding:5px 8px;border-right:1px solid #2a2a2a}
+thead tr.fr th:last-child{border-right:none}
+thead tr.hr th{background:#d4a017;padding:8px 12px;border-bottom:1px solid #b87800;border-right:1px solid #c8900a;font-size:17px;font-weight:500;color:#fff;white-space:nowrap;user-select:none}
+thead tr.hr th:last-child{border-right:none}
+th.srt{cursor:pointer;text-align:center}th.srt:hover{color:#1a1a1a}
+.si{margin-left:4px;font-size:14px;opacity:.5}.si.on{opacity:1;color:#1a1a1a}
+.fi-wrap{position:relative;display:inline-flex;align-items:center;flex:1;min-width:0}
+.fi-wrap .fi{width:100%;padding-right:22px}
+.clrx{position:absolute;right:5px;background:none;border:none;color:#666;cursor:pointer;font-size:13px;padding:0;line-height:1;font-weight:bold}
+.clrx:hover{color:#d4a017}
+.prepbadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:10px;background:#1e3a2a;color:#7ec850;border:1px solid #3a7a4a;font-size:11px;font-weight:700;padding:0 5px;margin-left:4px;vertical-align:middle;cursor:pointer}
+.prepbadge:hover{border-color:#7ec850}
+.prepinput{width:30px;height:20px;padding:0 3px;font-size:11px;border-radius:10px;border:1px solid #3a7a4a;background:#1e3a2a;color:#7ec850;text-align:center;outline:none;font-family:inherit;vertical-align:middle;margin-left:4px}
+input.fi{width:100%;background:#1a1a1a;border:1px solid #333;border-radius:5px;color:#d4a017;font-size:14px;padding:4px 8px;outline:none;font-family:inherit}
+input.fi:focus{border-color:#7a5c00}
+input.fi::placeholder{color:#444}
+tbody tr:nth-child(even){background:#222}tbody tr{background:#1e1e1e}
+tbody tr:hover{background:#272318}
+tbody tr.row-stop{background:#3a1010!important}tbody tr.row-stop:hover{background:#4a1818!important}
+tbody tr.row-note{background:#0f2a0f!important}tbody tr.row-note:hover{background:#163216!important}
+td{font-size:15px;color:#d4a017;padding:7px 12px;border-bottom:1px solid #2a2a2a;border-right:1px solid #2a2a2a;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td:last-child{border-right:none}
+td.sc{text-align:center}
+.nametd{cursor:pointer}
+.namespan.hasnote{color:#4caf50}
+input.noteinput{width:100%;background:#1a1a1a;border:1px solid #7a5c00;border-radius:4px;color:#fff;font-size:15px;padding:3px 6px;outline:none;font-family:inherit}
+.badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;border:1px solid #555;user-select:none}
+.v-{background:#2a2a2a;color:#444;border-color:#333}
+.vP{background:#2a3a1e;color:#7ec850;border-color:#4a7a2a}
+.vF{background:#1e2a3a;color:#5aa0d0;border-color:#2a5a8a}
+.vG{background:#2a1e3a;color:#a07ed0;border-color:#5a3a8a}
+.vS{background:#3a1e1e;color:#e07070;border-color:#8a2a2a}
+.vPEND{background:#3a2e1a;color:#e0a040;border-color:#8a6020;font-size:10px;width:auto;padding:0 5px}
+.drop{position:fixed;background:#222;border:1px solid #555;border-radius:8px;z-index:999;overflow:hidden;min-width:110px;display:none}
+.di{padding:8px 18px;font-size:16px;color:#d4a017;cursor:pointer;display:flex;align-items:center;gap:10px}
+.di:hover{background:#333}
+.dot{width:10px;height:10px;border-radius:3px}
+.d-{background:#333}.dP{background:#2a3a1e}.dF{background:#1e2a3a}.dG{background:#2a1e3a}.dS{background:#3a1e1e}.dPEND{background:#3a2e1a}
+.norows{text-align:center;padding:24px;color:#555;font-size:12px}
+tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size:12px}
+.tc{display:inline-flex;align-items:center;gap:3px;margin:0 3px}
+.tcn{font-weight:700}
+.tnote{position:fixed;background:#2a2a2a;color:#ccc;border:1px solid #555;border-radius:6px;padding:6px 10px;font-size:14px;z-index:998;pointer-events:none;max-width:220px;white-space:pre-wrap;display:none}
+#vimeoBar{align-items:center;gap:6px;background:#d4a017;border-radius:8px;padding:6px 14px}
+#vimeoBar span{font-size:14px;color:#1a1a1a;font-weight:600;white-space:nowrap}
+#vimeoBar .abtn{background:#1a1a1a;color:#d4a017;border-color:#333}
+#vimeoRange{width:72px;background:#fff8e8;border:1px solid #b87800;border-radius:5px;color:#1a1a1a;font-size:14px;padding:4px 8px;outline:none;font-family:inherit}
+#vimeoRange:focus{border-color:#333}
+#vimeoRange::placeholder{color:#888}
+#sessPanel{display:none;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.sess-chip{font-size:14px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:5px;padding:3px 9px;text-decoration:none}
+.sess-chip:hover{background:#1e2a3a}
+#transBanner{display:none;background:#0d2a0d;border:1px solid #2a6a2a;border-radius:8px;padding:10px 16px;margin-bottom:12px;color:#4caf50;font-size:14px;font-weight:500}
+.add-row{margin-bottom:10px}
+.add-row-top{display:flex;justify-content:flex-end}
+.add-form{display:none;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap}
+.sess-panel{display:none;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.nav-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:10px}
+.nav-btn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.nav-btn:hover{border-color:#d4a017;background:#333}
+.nav-btn.nb-logout{color:#e07070;border-color:#6a2a2a}
+.nav-btn.nb-logout:hover{background:#3a1e1e;border-color:#e07070}
+#transBtn,#transYes,#transNo,#transRollback{display:none}
+.nav-btn.nb-trans{color:#f0c030;border-color:#7a5c00}
+.nav-btn.nb-trans:hover{background:#3a2e00;border-color:#f0c030}
+.nav-btn.nb-yes{color:#7ec850;border-color:#4a7a2a}
+.nav-btn.nb-yes:hover{background:#1e3a1e;border-color:#7ec850}
+.nav-btn.nb-no{color:#e07070;border-color:#6a2a2a}
+.nav-btn.nb-no:hover{background:#3a1e1e;border-color:#e07070}
+.nav-btn.nb-rollback{color:#f0a030;border-color:#7a4a00}
+.nav-btn.nb-rollback:hover{background:#3a2800;border-color:#f0a030}
+.nav-btn.nb-ks26{color:#5ab0e0;border-color:#1a4a7a}
+.nav-btn.nb-ks26:hover{background:#0d2a40;border-color:#5ab0e0}
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center}
+.popup-overlay.open{display:flex}
+.popup-box{position:relative;width:90vw;height:90vh;background:#111;border-radius:10px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.8)}
+.popup-close{position:absolute;top:8px;right:10px;z-index:10;background:#3a3a3a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:4px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit}
+.popup-close:hover{background:#555;border-color:#d4a017}
+.popup-frame{width:100%;height:100%;border:none;display:block}
+.ks-badge{background:#0d2040!important;border-color:#2a5a9a!important;color:#5ab0e0!important}
+.ks-badge:hover{border-color:#5ab0e0!important;background:#162c50!important}
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <button type="button" class="nav-btn nb-logout" onclick="adminLogout()">Logout</button>
+  <button type="button" class="nav-btn" onclick="location.href='initiation.html'">Initiation</button>
+  <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
+  <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
+  <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
+  <button type="button" class="nav-btn" onclick="location.href='emails.html'">📧 Emails</button>
+  <button type="button" class="nav-btn" onclick="location.href='send.html'">📤 Send</button>
+  <button type="button" class="nav-btn nb-ks26" onclick="location.href='ks26.html'">⛰ KS26</button>
+  <button type="button" class="nav-btn nb-trans" id="transBtn" onclick="askTransition()">⚡ Transition</button>
+  <button type="button" class="nav-btn nb-yes" id="transYes" onclick="confirmTransition()">✓ Yes</button>
+  <button type="button" class="nav-btn nb-no" id="transNo" onclick="skipTransition()">✗ No</button>
+  <button type="button" class="nav-btn nb-rollback" id="transRollback" onclick="rollbackTransition()">↩ Rollback</button>
+</div>
+<div class="popup-overlay" id="popupOverlay" onclick="handleOverlayClick(event)">
+  <div class="popup-box">
+    <button class="popup-close" onclick="closePopup()">✕ Close</button>
+    <iframe class="popup-frame" id="popupFrame" src="" allowfullscreen></iframe>
+  </div>
+</div>
+<div id="transBanner"></div>
+<div class="course-rows" id="courseRows"></div>
+<div class="bar">
+  <div id="vimeoBar" style="display:none">
+    <span>Import classes:</span>
+    <input id="vimeoRange" placeholder="1-10 or empty=all">
+    <button type="button" class="abtn" onclick="vimeoImport('group')">Save for Group</button>
+    <input id="vimeoEmail" placeholder="Subscriber email (optional)" style="width:200px;background:#fff8e8;border:1px solid #b87800;border-radius:5px;color:#1a1a1a;font-size:14px;padding:4px 8px;outline:none;font-family:inherit">
+    <button type="button" class="abtn" onclick="vimeoImport('subscriber')">Save for Subscriber</button>
+  </div>
+  <span id="sy"></span>
+</div>
+<div id="sessPanel"></div>
+<div class="add-row">
+  <div class="add-row-top">
+    <button type="button" class="abtn" onclick="toggleAddForm()">+ Add subscriber</button>
+  </div>
+  <div id="addForm" class="add-form">
+    <input id="afName" class="fi" placeholder="Name" style="width:180px;display:inline-block">
+    <input id="afEmail" class="fi" placeholder="Email" style="width:220px;display:inline-block">
+    <input id="afGroup" class="fi" placeholder="Group # (e.g. 6)" style="width:130px;display:inline-block">
+    <button class="abtn" onclick="saveAddRow()">Save</button>
+    <button class="abtn" onclick="cancelAddForm()" style="opacity:.7">Cancel</button>
+  </div>
+</div>
+<div class="tw">
+<table>
+  <colgroup><col class="cn"><col class="ce"><col class="cm"><col class="cm"></colgroup>
+  <thead>
+    <tr class="hr">
+      <th style="padding:5px 8px"><div style="display:flex;align-items:center;gap:6px"><div class="fi-wrap"><input class="fi" id="fN" placeholder="Name…" oninput="render()"><button class="clrx" onclick="clearSearch('fN')" title="Clear">×</button></div><span id="nameHdr" style="font-size:12px;color:#5a3a00;white-space:nowrap"></span></div></th>
+      <th style="padding:5px 8px"><div style="display:flex;align-items:center;gap:6px"><div class="fi-wrap"><input class="fi" id="fE" placeholder="Email…" oninput="render()"><button class="clrx" onclick="clearSearch('fE')" title="Clear">×</button></div><button class="abtn" style="font-size:12px;padding:2px 8px;font-weight:400;white-space:nowrap" onclick="copyPaidEmails()">Copy</button></div></th>
+      <th class="srt" onclick="tSort('next')" style="text-align:center"><span id="lN"></span><span class="si" id="sN">↕</span></th>
+      <th class="srt" onclick="tSort('curr')" style="text-align:center"><span id="lC"></span><span class="si" id="sC">↕</span></th>
+    </tr>
+  </thead>
+  <tbody id="tb"><tr><td colspan="4" class="norows">Loading…</td></tr></tbody>
+  <tfoot><tr><td colspan="2" id="totLabel" style="color:#7a5c00;font-weight:600"></td><td id="totN" class="sc"></td><td id="totC" class="sc"></td></tr></tfoot>
+</table>
+</div>
+<div class="drop" id="drop"></div>
+<div class="tnote" id="tnote"></div>
+
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+if (!sessionStorage.getItem('adminAuth')) {
+  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+}
+var FC = {ID:'fldQ7kSY1KZ2bTska',LABEL:'fldqdzbMbgMf4fVU4',GROUPS:'fld4OYOz8TD70oFjP'};
+var FS = {EMAIL:'fldTKQVFs3vrMrwWA',NAME:'fld4Lx0LL4sfYOyy7',NOTE:'fld03gdtFjOIkn7wB',SUBS:'fldUvZSA5jTlsLQFH'};
+
+var MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var mo=new Date().getMonth();
+document.getElementById('lN').textContent=MN[(mo+1)%12];
+document.getElementById('lC').textContent=MN[mo];
+
+var ORD={F:0,P:1,PEND:1,G:2,S:3,'':4};
+var PRICES={'YTT-M1':200,'YTT-M2':200,'YTT-M3':220,'I Ching':250,'AL':255};
+var TCOL={F:'#5aa0d0',P:'#7ec850',PEND:'#e0a040',G:'#a07ed0',S:'#e07070','':'#555'};
+var TORD=['F','P','PEND','G','S',''];
+var courses=[], rows=[], sessions=[];
+var activeCourse='YTT-M1', activeGroup='All', expandedCourse=null;
+var sCol=null, sDir=1, dTgt=null, editingId=null, editingPrepaidIdx=null, editingPrepaidSlot=null;
+
+function sy(m){document.getElementById('sy').textContent=m;}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function clearSearch(id){var el=document.getElementById(id);if(el){el.value='';render();el.focus();}}
+function statusLetter(v){return (v||'').replace(/\d+$/,'') || '';}
+function statusNum(v){var m=(v||'').match(/\d+$/);return m?parseInt(m[0]):null;}
+function getCoursePrice(cid,nota){
+  if(cid==='AL'){var n=parseInt(nota||0);return (n&&n%175===0)?175:255;}
+  return PRICES[cid]||0;
+}
+
+async function get(action){return (await fetch(PROXY+'?action='+action)).json();}
+async function post(action,id,body){
+  return (await fetch(PROXY+'?action='+action+(id?'&id='+id:''),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+}
+
+function fv(f, fldId, fldName) { return f[fldId] || f[fldName] || ''; }
+
+async function load(){
+  sy('Loading…');
+  try{
+    var cr=await get('courses');
+    courses=(cr.records||[]).map(function(r){
+      var f=r.fields||{};
+      var cid = fv(f, FC.ID, 'id');
+      var clabel = fv(f, FC.LABEL, 'label');
+      var cgroups = fv(f, FC.GROUPS, 'groups') || 'All';
+      return {id:cid, label:clabel, groups:cgroups.split(',').map(function(g){return g.trim();})};
+    });
+    if(!courses.length) throw 'empty';
+    courses.sort(function(a,b){return a.id.localeCompare(b.id);});
+  }catch(e){
+    courses=[{id:'YM1',label:'Yoga Tantrică Tibetană modul 1',groups:['All','G6','G7']},
+             {id:'YM2',label:'Yoga Tantrică Tibetană modul 2',groups:['All','G4']},
+             {id:'YM3',label:'Yoga Tantrică Tibetană modul 3',groups:['All','G1','G2']}];
+    courses.sort(function(a,b){return a.id.localeCompare(b.id);});
+  }
+  try{
+    var sr=await get('students');
+    rows=(sr.records||[]).map(function(r){
+      var f=r.fields||{};
+      var subs={};
+      var subsRaw = fv(f, FS.SUBS, 'subscriptions');
+      try{subs=JSON.parse(subsRaw||'{}');}catch(e){}
+      return {
+        recordId: r.id,
+        email: fv(f, FS.EMAIL, 'email'),
+        name: fv(f, FS.NAME, 'name'),
+        note: fv(f, FS.NOTE, 'note'),
+        subscriptions: subs
+      };
+    });
+  }catch(e){rows=[];}
+  try{
+    var sesr=await get('sessions');
+    sessions=(sesr.records||[]).map(function(r){
+      var f=r.fields||{};
+      return {id:f.id||'',session:f.session||'',link:f.link||'',email:(f.email||'').toLowerCase()};
+    });
+  }catch(e){sessions=[];}
+  sy('');
+  buildCourseHeader();
+  render();
+  checkMonthTransition();
+}
+
+function buildCourseHeader(){
+  var c=document.getElementById('courseRows');
+  var badges=courses.map(function(co){
+    var act=activeCourse===co.id?'active':'';
+    return '<span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>';
+  }).join('');
+  badges+='<span class="cbadge ks-badge" onclick="location.href=\'ks26.html\'">KS2026<span class="tip">Kashmir Shaivism Retreat 2026</span></span>';
+  var groups='';
+  if(expandedCourse){
+    var co=courses.find(function(x){return x.id===expandedCourse;});
+    if(co) groups=(co.groups||['All']).map(function(g){
+      var on=(activeCourse===co.id&&activeGroup===g)?'on':'';
+      return '<button class="gbt '+on+'" onclick="selectGroup(\''+co.id+'\',\''+g+'\')">'+esc(g)+'</button>';
+    }).join('');
+  }
+  c.innerHTML='<div class="course-row">'+badges+'</div>'+(groups?'<div class="course-row">'+groups+'</div>':'');
+}
+
+function toggleCourse(cid){
+  if(expandedCourse===cid){expandedCourse=null;buildCourseHeader();return;}
+  expandedCourse=cid;
+  activeCourse=cid;
+  var co=courses.find(function(x){return x.id===cid;});
+  activeGroup=co?co.groups[0]:'All';
+  buildCourseHeader();render();updateVimeoBar();
+}
+function selectGroup(cid,g){
+  activeCourse=cid;activeGroup=g;expandedCourse=cid;
+  buildCourseHeader();render();updateVimeoBar();
+}
+
+function updateVimeoBar(){
+  var bar=document.getElementById('vimeoBar');
+  if(bar) bar.style.display=activeGroup!=='All'?'flex':'none';
+  renderSessions();
+}
+
+function renderSessions(){
+  var panel=document.getElementById('sessPanel');
+  if(!panel)return;
+  if(activeGroup==='All'){panel.style.display='none';return;}
+  var gNum=activeGroup.replace(/^G/,'');
+  var groupId=activeCourse+'-G'+gNum;
+  var filtered=sessions.filter(function(s){return s.id===groupId;});
+  filtered.sort(function(a,b){
+    var na=parseInt((a.session||'').replace(/\D/g,''))||0;
+    var nb=parseInt((b.session||'').replace(/\D/g,''))||0;
+    return na-nb;
+  });
+  if(!filtered.length){panel.style.display='none';return;}
+  panel.style.display='flex';
+  panel.innerHTML=filtered.map(function(s){
+    var label=esc(s.session)+(s.email?' ['+esc(s.email.split('@')[0])+']':'');
+    return '<a class="sess-chip" href="'+esc(s.link)+'" target="_blank">'+label+'</a>';
+  }).join('');
+}
+
+function tSort(slot){
+  if(sCol===slot)sDir*=-1;else{sCol=slot;sDir=1;}
+  ['next','curr'].forEach(function(s){
+    var si=document.getElementById(s==='next'?'sN':'sC');
+    if(si){si.textContent=sCol===s?(sDir===1?'↑':'↓'):'↕';si.classList.toggle('on',sCol===s);}
+  });
+  render();
+}
+
+async function saveStudent(row){
+  sy('Saving…');
+  try{
+    await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});
+    sy('Synced ✓');setTimeout(function(){sy('');},2000);
+  }catch(e){sy('Save error');}
+}
+
+function openDrop(el,idx,slot){
+  closeDrop();dTgt={idx:idx,slot:slot};
+  var opts=[['','— Empty','d-'],['P','P  Paid','dP'],['F','F  Full','dF'],['G','G  Free','dG'],['PEND','PEND  Pending','dPEND'],['S','S  Stop','dS']];
+  var dr=document.getElementById('drop');
+  dr.innerHTML=opts.map(function(o){return '<div class="di" onclick="pick(\''+o[0]+'\')"><span class="dot '+o[2]+'"></span>'+o[1]+'</div>';}).join('');
+  dr.style.display='block';
+  var r=el.getBoundingClientRect(),dh=dr.offsetHeight||160;
+  dr.style.top=(r.bottom+6+dh>window.innerHeight?r.top-dh-4:r.bottom+4)+'px';
+  dr.style.left=Math.min(r.left,window.innerWidth-130)+'px';
+}
+function pick(v){
+  if(dTgt===null)return;
+  var row=rows[dTgt.idx];if(!row)return;
+  if(!row.subscriptions)row.subscriptions={};
+  if(!row.subscriptions[activeCourse])row.subscriptions[activeCourse]={next:'',curr:''};
+  row.subscriptions[activeCourse][dTgt.slot]=v;
+  saveStudent(row);render();closeDrop();
+}
+function closeDrop(){document.getElementById('drop').style.display='none';dTgt=null;}
+
+function startEdit(idx){if(editingId===idx)return;editingId=idx;render();var inp=document.getElementById('ni_'+idx);if(inp){inp.focus();inp.select();}}
+function saveNote(idx){
+  var inp=document.getElementById('ni_'+idx);if(!inp)return;
+  rows[idx].note=inp.value;
+  saveStudent(rows[idx]);
+  editingId=null;render();
+}
+function showTip(e,note){if(!note||!note.trim())return;var t=document.getElementById('tnote');t.textContent=note;t.style.display='block';t.style.top=(e.clientY+14)+'px';t.style.left=Math.min(e.clientX+8,window.innerWidth-230)+'px';}
+function hideTip(){document.getElementById('tnote').style.display='none';}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#drop')&&!e.target.closest('.badge'))closeDrop();
+  if(!e.target.closest('.nametd')&&editingId!==null){editingId=null;render();}
+  if(!e.target.closest('.prepbadge')&&!e.target.closest('.prepinput')&&editingPrepaidIdx!==null){editingPrepaidIdx=null;render();}
+});
+
+function badge(idx,slot,val){
+  var letter=statusLetter(val)||'-';
+  var c='v'+letter;
+  return '<span class="badge '+c+'" onclick="event.stopPropagation();openDrop(this,'+idx+',\''+slot+'\')">'+(letter==='-'?'·':letter)+'</span>';
+}
+function prepaidBadge(row,idx,cid,slot){
+  if(slot!=='next') return '';
+  var sub=(row.subscriptions&&row.subscriptions[cid])||{};
+  var val=sub[slot]||'';
+  var letter=statusLetter(val);
+  if(letter!=='P'&&letter!=='F'&&letter!=='G') return '';
+  var num=statusNum(val);
+  if(num===null){
+    var nota=(row.note||'').trim();
+    if(/^\d+$/.test(nota)){
+      var price=getCoursePrice(cid,nota);
+      if(price){num=Math.floor(parseInt(nota)/price);if(num<=0)num=null;}
+    }
+  }
+  if(editingPrepaidIdx===idx&&editingPrepaidSlot===slot){
+    return '<input id="pbi_'+idx+'" class="prepinput" value="'+(num!==null?num:'')+'" placeholder="#" onclick="event.stopPropagation()" onkeydown="if(event.key===\'Enter\'||event.key===\'Tab\')savePrepaid('+idx+')" onblur="savePrepaid('+idx+')">';
+  }
+  return '<span class="prepbadge" onclick="event.stopPropagation();startPrepaidEdit('+idx+',\''+slot+'\')">'+(num!==null?num:'+')+'</span>';
+}
+function startPrepaidEdit(idx,slot){editingPrepaidIdx=idx;editingPrepaidSlot=slot||'next';render();setTimeout(function(){var el=document.getElementById('pbi_'+idx);if(el){el.focus();el.select();}},0);}
+function savePrepaid(idx){
+  if(editingPrepaidIdx!==idx) return;
+  var inp=document.getElementById('pbi_'+idx);
+  if(!inp) return;
+  var row=rows[idx];if(!row)return;
+  var slot=editingPrepaidSlot||'next';
+  if(!row.subscriptions[activeCourse])return;
+  var letter=statusLetter(row.subscriptions[activeCourse][slot]||'');
+  var val=inp.value.trim();
+  var num=parseInt(val);
+  row.subscriptions[activeCourse][slot]=letter+((!isNaN(num)&&num>0)?num:'');
+  editingPrepaidIdx=null;editingPrepaidSlot=null;
+  saveStudent(row);render();
+}
+function nameCell(row,idx){
+  if(editingId===idx)return '<td class="nametd" onclick="event.stopPropagation()"><input id="ni_'+idx+'" class="noteinput" value="'+esc(row.note||'')+'" placeholder="Nota…" onkeydown="if(event.key===\'Enter\')saveNote('+idx+')" onblur="saveNote('+idx+')"></td>';
+  var hn=row.note&&row.note.trim()!=='';
+  return '<td class="nametd" onclick="event.stopPropagation();startEdit('+idx+')" onmouseenter="showTip(event,\''+esc(row.note||'')+'\')" onmouseleave="hideTip()"><span class="namespan'+(hn?' hasnote':'')+'" title="'+esc(row.name)+'">'+esc(row.name)+'</span></td>';
+}
+
+function render(){
+  var fN=document.getElementById('fN'),fE=document.getElementById('fE');
+  var fn=fN?fN.value.toLowerCase():'',fe=fE?fE.value.toLowerCase():'';
+  var indexed=rows.map(function(r,i){return{r:r,i:i};});
+  var v=indexed.filter(function(x){
+    var r=x.r;
+    if(!r.subscriptions||!r.subscriptions[activeCourse])return false;
+    if(fn&&r.name.toLowerCase().indexOf(fn)<0)return false;
+    if(fe&&r.email.toLowerCase().indexOf(fe)<0)return false;
+    if(activeGroup!=='All'){
+      var rg=String(r.subscriptions[activeCourse].G||'').trim();
+      if(!rg||'G'+rg!==activeGroup.trim())return false;
+    }
+    return true;
+  });
+  var nameHdr=document.getElementById('nameHdr');
+  if(nameHdr) nameHdr.textContent='('+v.length+')';
+  if(sCol){v=v.slice().sort(function(a,b){
+    var av=ORD[statusLetter((a.r.subscriptions[activeCourse]&&a.r.subscriptions[activeCourse][sCol])||'')]??4;
+    var bv=ORD[statusLetter((b.r.subscriptions[activeCourse]&&b.r.subscriptions[activeCourse][sCol])||'')]??4;
+    return (av-bv)*sDir;
+  });}
+  // Totals (computed before early return so they always update)
+  var slotCounts=function(slot){
+    var c={};
+    var sumLei=0;
+    v.forEach(function(x){
+      var raw=(x.r.subscriptions[activeCourse]&&x.r.subscriptions[activeCourse][slot])||'';
+      var k=statusLetter(raw)||'';
+      c[k]=(c[k]||0)+1;
+      if(k==='P'||k==='F'||k==='G'||k==='PEND') sumLei+=getCoursePrice(activeCourse,(x.r.note||'').trim());
+    });
+    var paid=(c['P']||0)+(c['F']||0)+(c['G']||0)+(c['PEND']||0);
+    var html=TORD.filter(function(k){return c[k];}).map(function(k){
+      return '<span class="tc"><span class="dot d'+(k||'-')+'" style="width:8px;height:8px"></span><span class="tcn" style="color:'+TCOL[k]+'">'+(k||'·')+'</span><span style="color:#888">'+c[k]+'</span></span>';
+    }).join('');
+    if(paid) html+='<span style="color:#7ec850;font-weight:700;font-size:13px;margin-left:6px;border-left:1px solid #3a3a3a;padding-left:6px">'+paid+' · '+sumLei+' LEI</span>';
+    return html;
+  };
+  var paidN=v.filter(function(x){var s=statusLetter((x.r.subscriptions[activeCourse]||{}).next||'');return s==='P'||s==='F'||s==='G'||s==='PEND';}).length;
+  var paidC=v.filter(function(x){var s=statusLetter((x.r.subscriptions[activeCourse]||{}).curr||'');return s==='P'||s==='F'||s==='G'||s==='PEND';}).length;
+  var totLabel=document.getElementById('totLabel');
+  if(totLabel) totLabel.innerHTML='<span style="color:#7a5c00;font-weight:600">Totals</span>'+(v.length?'<span style="color:#7ec850;font-size:12px;margin-left:8px">'+paidN+' / '+paidC+' paid</span>':'');
+  var totN=document.getElementById('totN'),totC=document.getElementById('totC');
+  if(totN)totN.innerHTML=slotCounts('next');
+  if(totC)totC.innerHTML=slotCounts('curr');
+  var tb=document.getElementById('tb');
+  if(!v.length){tb.innerHTML='<tr><td colspan="4" class="norows">No subscribers for this course/group</td></tr>';return;}
+  tb.innerHTML=v.map(function(x){
+    var r=x.r,idx=x.i;
+    var sub=(r.subscriptions&&r.subscriptions[activeCourse])||{next:'',curr:''};
+    var isStop=statusLetter(sub.next)==='S'||statusLetter(sub.curr)==='S';
+    var notaStr=(r.note||'').trim();
+    var isNumericNota=/^\d+$/.test(notaStr);
+    var hasNote=notaStr!==''&&!isNumericNota;
+    var rowCls=isStop?' class="row-stop"':hasNote?' class="row-note"':'';
+    return '<tr'+rowCls+'>'+nameCell(r,idx)+'<td style="opacity:.8" title="'+esc(r.email)+'"><a href="javascript:void(0)" style="color:#d4a017;text-decoration:none" onmouseover="this.style.textDecoration=\'underline\'" onmouseout="this.style.textDecoration=\'none\'" onclick="event.stopPropagation();openAsStudent('+idx+')">'+esc(r.email)+'</a></td><td class="sc">'+badge(idx,'next',sub.next||'')+prepaidBadge(r,idx,activeCourse,'next')+'</td><td class="sc">'+badge(idx,'curr',sub.curr||'')+'</td></tr>';
+  }).join('');
+  if(editingId!==null){var inp=document.getElementById('ni_'+editingId);if(inp)inp.focus();}
+  if(editingPrepaidIdx!==null){var pbi=document.getElementById('pbi_'+editingPrepaidIdx);if(pbi)pbi.focus();}
+}
+
+function toggleAddForm(){
+  var f=document.getElementById('addForm');
+  if(f.style.display==='none'){
+    f.style.display='flex';document.getElementById('afName').focus();
+  } else {
+    cancelAddForm();
+  }
+}
+function copyPaidEmails(){
+  var emails=rows.filter(function(r){
+    if(!r.subscriptions||!r.subscriptions[activeCourse])return false;
+    var sub=r.subscriptions[activeCourse];
+    if(activeGroup!=='All'){var rg=sub.G;if(!rg||'G'+rg!==activeGroup)return false;}
+    var cc=statusLetter(sub.curr||'');return cc==='P'||cc==='F'||cc==='G'||cc==='PEND';
+  }).map(function(r){return r.email;});
+  if(!emails.length){sy('No paid emails');setTimeout(function(){sy('');},2000);return;}
+  navigator.clipboard.writeText(emails.join(';')).then(function(){
+    sy('Copied '+emails.length+' emails ✓');setTimeout(function(){sy('');},2000);
+  });
+}
+function cancelAddForm(){
+  var f=document.getElementById('addForm');f.style.display='none';
+  document.getElementById('afName').value='';
+  document.getElementById('afEmail').value='';
+  document.getElementById('afGroup').value='';
+}
+async function saveAddRow(){
+  var name=document.getElementById('afName').value.trim();
+  var email=document.getElementById('afEmail').value.trim();
+  var gnum=document.getElementById('afGroup').value.trim();
+  if(!name){alert('Name is required');return;}
+  if(!email){alert('Email is required');return;}
+  var subs={};
+  subs[activeCourse]={next:'',curr:'',G:gnum};
+  sy('Creating…');
+  try{
+    var res=await post('create',null,{[FS.EMAIL]:email,[FS.NAME]:name,[FS.SUBS]:JSON.stringify(subs),[FS.NOTE]:''});
+    rows.push({recordId:res.id||'',email:email,name:name,note:'',subscriptions:subs});
+    sy('Synced ✓');setTimeout(function(){sy('');},2000);
+    cancelAddForm();render();
+  }catch(e){sy('Create error');}
+}
+
+async function vimeoImport(mode){
+  if(activeGroup==='All')return;
+  var range=document.getElementById('vimeoRange').value.trim();
+  var email=(document.getElementById('vimeoEmail').value||'').trim().toLowerCase();
+  if(mode==='subscriber'&&!email){alert('Enter subscriber email');return;}
+  var from=0,to=0;
+  if(range){
+    var m=range.match(/^(\d+)-(\d+)$/);
+    if(!m){alert('Enter a range like 50-53, or leave empty for all');return;}
+    from=parseInt(m[1]);to=parseInt(m[2]);
+    if(from>to){alert('Invalid range');return;}
+  }
+  var gNum=activeGroup.replace(/^G/,'');
+  var groupId=activeCourse+'-G'+gNum;
+  if(mode==='group'){
+    sy('Clearing old group sessions…');
+    try{await get('sessions_clear&id='+encodeURIComponent(groupId));}catch(e){}
+  } else {
+    sy('Clearing old private sessions for '+email+'…');
+    try{await get('sessions_clear&id='+encodeURIComponent(groupId)+'&email='+encodeURIComponent(email));}catch(e){}
+  }
+  sy('Fetching Vimeo videos for '+activeCourse+'…');
+  try{
+    var res=await get('vimeo&course='+encodeURIComponent(activeCourse)+'&from='+from+'&to='+to);
+    if(res.error){sy('Vimeo error: '+res.error);return;}
+    var videos=res.videos||[];
+    if(!videos.length){sy('No videos found for '+activeCourse);return;}
+    var toSave=videos.map(function(v){
+      var pad=String(v.class_num).padStart(2,'0');
+      var rec={id:groupId,session:'C'+pad,link:v.link};
+      if(mode==='subscriber') rec.email=email;
+      return rec;
+    });
+    sy('Saving '+toSave.length+' session links…');
+    var r=await post('sessions_upsert',null,{sessions:toSave});
+    if(r.ok){
+      sy('Saved '+r.count+' sessions ✓');
+      var sesr=await get('sessions');
+      sessions=(sesr.records||[]).map(function(r){var f=r.fields||{};return {id:f.id||'',session:f.session||'',link:f.link||'',email:(f.email||'').toLowerCase()};});
+      renderSessions();
+      setTimeout(function(){sy('');},2000);
+    } else {
+      sy('Save error');
+    }
+  }catch(e){sy('Error: '+(e.message||e));}
+}
+
+
+function transitionKey(){
+  var now=new Date();
+  return 'tr_'+now.getFullYear()+'_'+(now.getMonth()+1);
+}
+function transitionSkipKey(){
+  var now=new Date();
+  return 'tr_skip_'+now.getFullYear()+'_'+(now.getMonth()+1);
+}
+function transitionBackupKey(){
+  var now=new Date();
+  return 'tr_backup_'+now.getFullYear()+'_'+(now.getMonth()+1);
+}
+function checkMonthTransition(){
+  var done=!!localStorage.getItem(transitionKey());
+  var skipped=!!localStorage.getItem(transitionSkipKey());
+  var btn=document.getElementById('transBtn');
+  var rbtn=document.getElementById('transRollback');
+  if(btn) btn.style.display=(done||skipped)?'none':'inline-block';
+  if(rbtn) rbtn.style.display=done?'inline-block':'none';
+}
+function downloadBackupCSV(){
+  var MN2=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var now=new Date();
+  var monthName=MN2[now.getMonth()];
+  var courseIds=courses.map(function(c){return c.id;});
+  var headers=['Name','Email'];
+  courseIds.forEach(function(cid){headers.push(cid+'_curr');headers.push(cid+'_next');});
+  var lines=[headers.join(',')];
+  rows.forEach(function(row){
+    var cols=['"'+((row.name||'').replace(/"/g,'""'))+'"','"'+((row.email||'').replace(/"/g,'""'))+'"'];
+    courseIds.forEach(function(cid){
+      var s=(row.subscriptions&&row.subscriptions[cid])||{};
+      cols.push('"'+(s.curr||'')+'"');
+      cols.push('"'+(s.next||'')+'"');
+    });
+    lines.push(cols.join(','));
+  });
+  var blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=monthName+'_subscriptions.csv';a.click();
+  URL.revokeObjectURL(url);
+}
+async function rollbackTransition(){
+  var backupJson=localStorage.getItem(transitionBackupKey());
+  if(!backupJson)return;
+  var backup=JSON.parse(backupJson);
+  backup.forEach(function(b){
+    var row=rows.find(function(r){return r.recordId===b.recordId;});
+    if(row){row.subscriptions=JSON.parse(JSON.stringify(b.subscriptions));row.note=b.note||'';}
+  });
+  sy('Rolling back…');
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i];
+    if(!row.recordId)continue;
+    try{await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});}catch(e){}
+  }
+  sy('');
+  localStorage.removeItem(transitionKey());
+  render();
+  checkMonthTransition();
+  var banner=document.getElementById('transBanner');
+  if(banner){
+    banner.textContent='Rolled back. Click ⚡ Transition to apply again.';
+    banner.style.display='block';
+    setTimeout(function(){banner.style.display='none';},6000);
+  }
+}
+function askTransition(){
+  document.getElementById('transBtn').style.display='none';
+  document.getElementById('transYes').style.display='inline-block';
+  document.getElementById('transNo').style.display='inline-block';
+}
+function confirmTransition(){
+  document.getElementById('transYes').style.display='none';
+  document.getElementById('transNo').style.display='none';
+  doTransition();
+}
+function skipTransition(){
+  localStorage.setItem(transitionSkipKey(),'1');
+  document.getElementById('transYes').style.display='none';
+  document.getElementById('transNo').style.display='none';
+}
+async function doTransition(){
+  var backup=rows.map(function(row){return {recordId:row.recordId,subscriptions:JSON.parse(JSON.stringify(row.subscriptions)),note:row.note||''};});
+  localStorage.setItem(transitionBackupKey(),JSON.stringify(backup));
+  downloadBackupCSV();
+  localStorage.setItem(transitionKey(),'1');
+  sy('Applying month transition…');
+  rows.forEach(function(row){
+    var subs=row.subscriptions;
+    var clearNota=false;
+    Object.keys(subs).forEach(function(cid){
+      var s=subs[cid];
+      var oldCurr=s.curr||'';
+      var oldCurrLetter=statusLetter(oldCurr);
+      var oldCurrNum=statusNum(oldCurr);
+      s.curr=s.next||'';
+      if(oldCurrLetter==='S'){
+        s.next='S';
+      } else if(oldCurrLetter==='F'&&oldCurrNum===null){
+        s.next='F';
+      } else if(oldCurrNum!==null&&oldCurrNum>1){
+        s.next=oldCurrLetter+(oldCurrNum-1);
+      } else {
+        s.next='';
+        if(oldCurrNum===1) clearNota=true;
+      }
+    });
+    if(clearNota) row.note='';
+  });
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i];
+    if(!row.recordId) continue;
+    try{await post('update',row.recordId,{[FS.SUBS]:JSON.stringify(row.subscriptions),[FS.NOTE]:row.note||''});}catch(e){}
+  }
+  sy('');
+  render();
+  checkMonthTransition();
+  var now=new Date();
+  var banner=document.getElementById('transBanner');
+  if(banner){
+    banner.textContent='Transition complete: '+MN[now.getMonth()]+' is now current, '+MN[(now.getMonth()+1)%12]+' is next. Use ↩ Rollback to undo.';
+    banner.style.display='block';
+    setTimeout(function(){banner.style.display='none';},10000);
+  }
+}
+
+function openAsStudent(idx){
+  var row=rows[idx];if(!row)return;
+  var sd={fields:{name:row.name,email:row.email,subscriptions:JSON.stringify(row.subscriptions),note:row.note||'',sessions:row.sessions||''}};
+  sessionStorage.setItem('student',JSON.stringify(sd));
+  window.open('student.html','_blank');
+}
+
+function adminLogout(){
+  sessionStorage.removeItem('adminAuth');
+  window.location.href=/^\/app(\/|$)/.test(location.pathname)?'/app/':'/';
+}
+function openPopup(url){
+  document.getElementById('popupFrame').src=url;
+  document.getElementById('popupOverlay').classList.add('open');
+}
+function closePopup(){
+  document.getElementById('popupOverlay').classList.remove('open');
+  document.getElementById('popupFrame').src='';
+}
+function handleOverlayClick(e){
+  if(e.target===document.getElementById('popupOverlay'))closePopup();
+}
+
+load();
+</script>
+</body>
+</html>

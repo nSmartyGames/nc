@@ -23,7 +23,9 @@ order emails manually `\Flagged`** in the mailbox regardless of read state (`fla
 those rows, shown as `[FLAGGED]` in the table) — flagging is how the admin marks an order for a
 later look, so it's always worth a pass. Returns a table + JSON with, per order:
 `onum, date, name, email, course, group, total, nota, month, flagged` and a `check` block
-(`student_exists`, `has_course`, `curr`, `next`, `already_paid`).
+(`student_exists`, `has_course`, `curr`, `next`, `already_paid`). When `course` couldn't be parsed
+from the order text, also carries `course_source: "inferred_from_student"` (single-course fallback
+applied) or `course_candidates` (multiple courses on file, needs a manual pick).
 
 ### 2. Present the list to the user
 Show: **Name, Email, Course+Group (e.g. `YTT-M1 G8`), Sum, Months (from nota), Already-paid?**
@@ -45,6 +47,14 @@ payment**; call it out, don't silently re-insert.
   Only set a group when the order/nota specifies one.
 - **Wrong/!= billing email** (someone paying for another person, gifts): confirm the target email
   with the user before inserting. Route the payment to the actual student's record/email.
+- **Course/group not parsed from the order** (blank nota, unusual wording): `orders_scan` now
+  falls back to the student's existing Airtable subscription — if they have exactly one course on
+  file, it's filled in automatically (`course_source: "inferred_from_student"`, flagged
+  `[course inferred from Student table]` in the scan table) and the existing group is reused too.
+  If the student has **more than one** course, it's left blank with `course_candidates` listing
+  them (shown as `course unclear — student has: X, Y`) — don't guess; use the paid amount (`total`)
+  and the nota/month wording (which usually states the month(s) directly) to pick the right one by
+  hand, same as any other ambiguous case.
 Always confirm the final insert list with the user before writing (Airtable writes are live).
 
 ### 4. Bulk insert (sets `next='P'` for next month)
@@ -72,45 +82,19 @@ echo '["Buyer One","Buyer Two"]' | python3 .claude/skills/daily-orders/orders.py
 ```
 
 ## Beyond WooCommerce orders: flagged/unread inquiry emails
-`orders_scan`/`orders_mark` only match the WooCommerce "Comandă nouă"/"New order" subject
-pattern. Registration *requests* for ceremonies/initiations (Rudra-Șiva, AMRITA SHAKTIPATA,
-Mahamrityunjaya mantra rounds, etc.) usually arrive as free-form emails, not orders, and often
-sit `\Flagged` in the inbox for a later manual look. To sweep those:
+`orders_scan`/`orders_mark` only match the WooCommerce "Comandă nouă"/"New order" subject pattern.
+Everything else in the inbox — ceremony/initiation requests (Rudra-Șiva, AMRITA SHAKTIPATA,
+Mahamrityunjaya mantra rounds), monthly-course questions, "didn't receive" complaints, anything —
+is handled by the **`mails`** skill (`.claude/skills/mails/`), which wraps `email_scan`: it
+auto-answers + auto-files only Rudra-Șiva (location detected) and AMRITA/impulsionare (eligible)
+signups, and drafts everything else (including payment-status lookups for "didn't receive" questions)
+for the admin to review and send by hand. Use `mails`, not this section, for that sweep.
 
-1. **`flagged_scan`** (read-only) — every `UNSEEN` or `FLAGGED` message since a date, any subject:
-   `{"since":"20-May-2026","max":300}` → `{uid, from_name, from_email, subject, date, body, unread,
-   flagged}`. Use this first to see everything currently open, then triage by topic/keyword.
-2. **`email_search`** (read-only) — keyword + date search across *all* mail (not just unread), now
-   also returns `seen`/`flagged` per hit: `{"keyword":"AMRITA","since":"25-Jun-2026","max":30}`.
-   Useful for finding older threads on the same topic (e.g. checking whether someone already
-   emailed twice, or already got a personal reply).
-3. **`sent_scan`** (read-only) — search the `INBOX.Sent` folder the same way, to check whether a
-   personal confirmation was **already sent** before sending another one. This site's actual
-   confirmation style is terse — e.g. `"Confirmam."` or `"Confirmam participarea dumneavoastra."`
-   — match that tone, don't write a paragraph.
-4. Cross-check candidates against the *target* CSV/table before adding (`mm_initiation.csv`,
-   `ks26.csv`, Airtable Students) — many flagged inquiries turn out to already be recorded from a
-   prior pass; those just need marking read, no new write or email.
-5. **`email_flag`** now accepts `{"uid":N,"flag":false,"mark_seen":true}` (in addition to the
-   original `{"num":N,"flag":bool}` form) to clear `\Flagged` **and** set `\Seen` in one call for a
-   specific message found via `flagged_scan`/`email_search`.
-
-Routing by event (as of 2026-07):
-- **AMRITA SHAKTIPATA** (Bucharest ceremony) → `mm_initiation.csv` via `csv_append`, `part:"new"`.
-  Eligibility (`mm_initiation.html`'s `checkEligibility`) requires a prior `Part 1`/`Part 2`
-  (aprofundare workshop) row for that email/name.
-- **Inițiere Rudra-Șiva** (KS26 retreat's initiation add-on, *not* the retreat itself) →
-  `ks26.csv`'s `rudra` column (`Cluj`/`Bucuresti`/`Costinesti`) via `ks26_upsert`. Selecting a
-  location in the app *is* the confirmation, per the admin's own past reply: "în aplicație vă
-  înscrieți pentru inițiere în momentul în care alegeți locația la care participați." If a second
-  person shares one email (e.g. a couple registering together) and only one already has a
-  `ks26.csv` row, `ks26_upsert`'s dedupe key is `email+session` — give the second person a
-  different `session` value (there's no real distinguishing session, so this is just a key trick)
-  so their row doesn't overwrite the first person's.
+`flagged_scan` / `email_search` / `sent_scan` (read-only, documented in the proxy) remain useful for
+ad-hoc one-off lookups outside that flow — e.g. checking whether a specific person already got a
+personal reply before following up manually.
 - Confirmation emails go out via `send_admin` (`{to, subject, message}`) — this also archives a
   copy to `INBOX.Sent`, matching how the admin's manual replies show up.
-- Anything outside these two specific events found during a sweep (other mantra rounds, other
-  cities, unrelated questions) — leave untouched; those need a human answer, not a mechanical add.
 
 ## In-app version
 The same flow is available to the admin directly in `yoga.html` — a command console fixed at the

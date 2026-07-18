@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px;padding-bottom:70px}
+a{color:#5aa0d0;text-decoration:none}
+a:hover{text-decoration:underline}
+
+
+/* Dashboard */
+.dashboard{width:100%;max-width:600px}
+.dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.dash-header h2{font-size:16px;color:#f0c030}
+.dash-header .user-info{font-size:12px;color:#888}
+.logout-btn{background:none;border:1px solid #444;color:#888;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer}
+.logout-btn:hover{border-color:#d4a017;color:#d4a017}
+
+.sub-card{background:#242424;border:1px solid #3a3a3a;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.sub-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;user-select:none}
+.sub-header:hover{background:#2a2a2a}
+.sub-title{display:flex;align-items:center;gap:10px}
+.sub-badge{background:#2e2000;border:1px solid #7a5c00;color:#d4a017;border-radius:6px;padding:3px 10px;font-size:13px;font-weight:700}
+.sub-label{font-size:13px;color:#ccc}
+.sub-status{font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600}
+.st-P{background:#2a3a1e;color:#7ec850;border:1px solid #4a7a2a}
+.st-F{background:#1e2a3a;color:#5aa0d0;border:1px solid #2a5a8a}
+.st-G{background:#2a1e3a;color:#a07ed0;border:1px solid #5a3a8a}
+.st-S{background:#3a1e1e;color:#e07070;border:1px solid #8a2a2a}
+.st-{background:#2a2a2a;color:#555;border:1px solid #333}
+.chevron{color:#555;font-size:14px;transition:transform .2s}
+.chevron.open{transform:rotate(90deg);color:#d4a017}
+
+.sub-body{display:none;padding:0 16px 14px;border-top:1px solid #2a2a2a}
+.sub-body.open{display:block}
+.session-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.session-chip{font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:6px;padding:4px 12px;cursor:pointer;user-select:none}
+.session-chip:hover{background:#1e2a3a}
+.no-sessions{font-size:12px;color:#555;padding:10px 0}
+.player-box{margin-top:12px;display:none}
+.player-loading{font-size:12px;color:#888;padding:8px 0}
+.player-err{font-size:12px;color:#e07070;padding:8px 0}
+.player-pass{font-size:13px;color:#d4a017;background:#2a2200;border:1px solid #7a5c00;border-radius:6px;padding:8px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.player-pass strong{letter-spacing:3px;color:#f0c030;font-size:16px}
+.copy-btn{background:#3a2e00;color:#d4a017;border:1px solid #7a5c00;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer}
+.copy-btn:hover{border-color:#f0c030}
+.player-embed{width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-top:4px}
+.player-embed iframe{width:100%;height:100%;border:none}
+.month-info{font-size:11px;color:#666;margin-top:4px}
+
+/* Contact bar (logged in) */
+.contact-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:90%;max-width:560px;background:#1e1e1e;border:1px solid #333;border-bottom:none;border-radius:10px 10px 0 0;z-index:500;display:none}
+.contact-tab{display:flex;align-items:center;justify-content:space-between;padding:9px 16px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.contact-tab:hover{background:#242424}
+.contact-tab-label{font-size:12px;color:#d4a017;font-weight:600}
+.contact-chevron{color:#555;font-size:11px;transition:transform .2s}
+.contact-chevron.open{transform:rotate(180deg);color:#d4a017}
+.contact-form{display:none;padding:12px 16px;border-top:1px solid #2a2a2a}
+.contact-form.open{display:block}
+.contact-form input,.contact-form textarea{width:100%;background:#111;border:1px solid #3a3a3a;border-radius:6px;color:#d4a017;font-size:13px;padding:8px 10px;outline:none;font-family:inherit;margin-bottom:8px}
+.contact-form input:focus,.contact-form textarea:focus{border-color:#d4a017}
+.contact-form input::placeholder,.contact-form textarea::placeholder{color:#555}
+.contact-form textarea{resize:vertical;min-height:80px}
+.contact-form-row{display:flex;gap:8px;align-items:center}
+.contact-send{background:#2a2a2a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:8px 20px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
+.contact-send:hover{border-color:#d4a017}
+.contact-send:disabled{opacity:.5;cursor:not-allowed}
+.contact-msg{font-size:11px;flex:1}
+
+
+/* Nav bar */
+.nav-bar{display:flex;justify-content:flex-end;gap:6px;margin-bottom:14px}
+.nav-btn{background:#2a2a2a;color:#d4a017;border:1px solid #444;border-radius:6px;padding:5px 13px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.nav-btn:hover{border-color:#d4a017;background:#333}
+.nav-btn.nb-student{color:#e07070;border-color:#6a2a2a}
+.nav-btn.nb-student:hover{background:#3a1e1e;border-color:#e07070}
+
+/* Popup */
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center}
+.popup-overlay.open{display:flex}
+.popup-box{position:relative;width:90vw;height:90vh;background:#111;border-radius:10px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.8)}
+.popup-close{position:absolute;top:8px;right:10px;z-index:10;background:#3a3a3a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:4px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit}
+.popup-close:hover{background:#555;border-color:#d4a017}
+.popup-frame{width:100%;height:100%;border:none;display:block}
+.ks-join-link{display:inline-block;font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:12px;padding:3px 12px;text-decoration:none;font-weight:600}
+.ks-join-link:hover{background:#1e2a3a;text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div class="login-box" id="loginScreen">
+  <div class="logo">nicolaecatrina.com</div>
+  <h2>Login</h2>
+  <p>Introduceți codul de 5 cifre<br>Enter your 5-digit login code</p>
+  <div class="code-inputs" id="codeInputs">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+    <input type="text" maxlength="1" inputmode="numeric" autocomplete="off">
+  </div>
+  <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Login</button>
+  <div class="login-msg" id="loginMsg"></div>
+  <div class="sendcode-section">
+    <p>Înregistrați un cod nou prin email:<br>Register a new code with your email:</p>
+    <div class="sendcode-row">
+      <input type="email" id="loginSendEmail" placeholder="your@email.com" onkeydown="if(event.key==='Enter')loginSendCode()">
+      <button type="button" onclick="loginSendCode()">Send code</button>
+    </div>
+    <div class="sendcode-msg" id="loginSendMsg"></div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="dashboard" id="dashboard" style="display:none">
+  <div class="dash-header">
+    <div>
+      <h2 id="dashName"></h2>
+      <div class="user-info" id="dashEmail"></div>
+    </div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn nb-student" onclick="logout()">Logout</button>
+    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/events-calendar')">Events</button>
+    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/online-ondemand-classes-and-modules/')">On-demand</button>
+    <button class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
+  </div>
+  <div id="subsList"></div>
+</div>
+
+<!-- Fixed bottom email bar -->
+<div class="bottom-bar">
+  <input type="email" id="barEmail" placeholder="your@email.com — get login code" onkeydown="if(event.key==='Enter')sendCode()">
+  <button type="button" onclick="sendCode()">Send me a code</button>
+  <span class="bar-msg" id="barMsg"></span>
+</div>
+
+<!-- Contact bar (logged in) -->
+<div class="contact-bar" id="contactBar">
+  <div class="contact-tab" onclick="toggleContactBar()">
+    <span class="contact-tab-label">✉ Contact Teacher</span>
+    <span class="contact-chevron" id="contactChevron">▲</span>
+  </div>
+  <div class="contact-form" id="contactForm">
+    <input type="text" id="contactSubject" placeholder="Subject">
+    <textarea id="contactMessage" placeholder="Your message…"></textarea>
+    <div class="contact-form-row">
+      <button type="button" class="contact-send" id="contactSend" onclick="sendContactEmail()">Send</button>
+      <span class="contact-msg" id="contactMsgEl"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Popup -->
+<div class="popup-overlay" id="popupOverlay" onclick="handleOverlayClick(event)">
+  <div class="popup-box">
+    <button class="popup-close" onclick="closePopup()">✕ Close</button>
+    <iframe class="popup-frame" id="popupFrame" src="" allowfullscreen></iframe>
+  </div>
+</div>
+
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+var student = null;
+var courses = [];
+var sessions = [];
+var ks2026Enrollments = {};
+
+// Code input handling
+var inputs = document.querySelectorAll('#codeInputs input');
+inputs.forEach(function(inp, i) {
+  inp.addEventListener('input', function() {
+    if (inp.value.length === 1 && i < 4) inputs[i+1].focus();
+    checkCode();
+  });
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && !inp.value && i > 0) { inputs[i-1].focus(); }
+    if (e.key === 'Enter') doLogin();
+  });
+  inp.addEventListener('paste', function(e) {
+    e.preventDefault();
+    var txt = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'').substring(0,5);
+    for (var j = 0; j < 5; j++) { inputs[j].value = txt[j] || ''; }
+    if (txt.length === 5) inputs[4].focus();
+    checkCode();
+  });
+});
+
+function getCode() {
+  var c = '';
+  inputs.forEach(function(i){ c += i.value; });
+  return c;
+}
+function checkCode() {
+  document.getElementById('loginBtn').disabled = getCode().length !== 5;
+}
+
+function msg(text, ok) {
+  var m = document.getElementById('loginMsg');
+  m.textContent = text;
+  m.className = 'login-msg ' + (ok ? 'msg-ok' : 'msg-err');
+}
+
+function toggleEmailBox() {
+  var eb = document.getElementById('emailBox');
+  eb.style.display = eb.style.display === 'none' ? 'block' : 'none';
+}
+
+function barMsg(text, ok) {
+  var m = document.getElementById('barMsg');
+  m.textContent = text;
+  m.style.color = ok ? '#7ec850' : '#e07070';
+}
+async function sendCode() {
+  var email = document.getElementById('barEmail').value.trim();
+  if (!email) { barMsg('Enter your email', false); return; }
+  barMsg('Sending…', true);
+  try {
+    var res = await fetch(PROXY + '?action=sendcode', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: email})
+    }).then(function(r){return r.json();});
+    if (res.ok) {
+      barMsg('Code sent! Check your inbox.', true);
+      document.getElementById('barEmail').value = '';
+    } else {
+      barMsg(res.error || 'Failed to send code', false);
+    }
+  } catch(e) { barMsg('Network error', false); }
+}
+
+async function doLogin() {
+  var code = getCode();
+  if (code.length !== 5) return;
+  msg('Logging in…', true);
+  try {
+    var res = await fetch(PROXY + '?action=login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({code: code})
+    }).then(function(r){return r.json();});
+    if (res.ok && res.isAdmin) {
+      sessionStorage.setItem('adminAuth', '1');
+      window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/yoga.html' : '/yoga.html';
+      return;
+    }
+    if (res.ok && res.student) {
+      if (res.isAdmin) {
+        sessionStorage.setItem('adminAuth', '1');
+        window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/yoga.html' : '/yoga.html';
+        return;
+      }
+      student = res.student;
+      sessionStorage.setItem('student', JSON.stringify(student));
+      sessionStorage.setItem('loginCode', code);
+      await loadCourseData();
+      showDashboard();
+    } else {
+      msg(res.error || 'Invalid code', false);
+    }
+  } catch(e) { msg('Network error', false); }
+}
+
+async function loadCourseData() {
+  try {
+    var cr = await fetch(PROXY + '?action=courses').then(function(r){return r.json();});
+    courses = (cr.records || []).map(function(r){
+      var f = r.fields || {};
+      return {id: f.id || '', label: f.label || '', groups: (f.groups || 'All').split(',')};
+    });
+  } catch(e) { courses = []; }
+  try {
+    var sr = await fetch(PROXY + '?action=sessions').then(function(r){return r.json();});
+    sessions = (sr.records || []).map(function(r){
+      var f = r.fields || {};
+      return {id: f.id || '', session: f.session || '', link: f.link || '', email: (f.email || '').toLowerCase()};
+    });
+  } catch(e) { sessions = []; }
+  try {
+    var kr = await fetch(PROXY + '?action=ks2026').then(function(r){return r.json();});
+    ks2026Enrollments = kr.enrollments || {};
+  } catch(e) { ks2026Enrollments = {}; }
+}
+
+function showDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.querySelector('.bottom-bar').style.display = 'none';
+  document.getElementById('contactBar').style.display = 'block';
+
+  var f = student.fields || {};
+  var name = f.name || 'Student';
+  var email = f.email || '';
+  document.getElementById('dashName').textContent = 'Welcome, ' + name;
+  document.getElementById('dashEmail').textContent = email;
+
+  var subs = {};
+  try { subs = JSON.parse(f.subscriptions || '{}'); } catch(e) {}
+
+  var MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var mo = new Date().getMonth();
+  var currMonth = MN[mo];
+  var nextMonth = MN[(mo+1)%12];
+
+  var studentEmail = (f.email || '').toLowerCase();
+  var ksSessions = ks2026Enrollments[studentEmail] || [];
+  var isKsEnrolled = ksSessions.length > 0;
+  var hasLive   = ksSessions.indexOf('live')   >= 0;
+  var hasReplay = ksSessions.indexOf('replay') >= 0;
+  var ksTypeLabel = (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
+  var ksCard = '<div class="sub-card">';
+  ksCard += '<div class="sub-header"' + (isKsEnrolled ? ' onclick="toggleSub(this)"' : '') + '>';
+  ksCard += '<div class="sub-title">';
+  if (isKsEnrolled) {
+    ksCard += '<span class="sub-badge" style="background:#0d2040;border-color:#2a6a9a;color:#5ab0e0">KS2026</span>';
+    ksCard += '<span class="sub-label">Kashmir Shaivism Retreat - ' + ksTypeLabel + '</span>';
+  } else {
+    ksCard += '<span class="sub-badge" style="background:#1e1e1e;border-color:#333;color:#555">KS2026</span>';
+    ksCard += '<span class="sub-label" style="color:#666">Kashmir Shaivism Retreat - live/replay</span>';
+  }
+  ksCard += '</div><div style="display:flex;align-items:center;gap:10px">';
+  if (isKsEnrolled) {
+    if (hasLive)   ksCard += '<span class="sub-status" style="background:#1e3a1e;color:#7ec850;border:1px solid #3a7a3a">Live</span>';
+    if (hasReplay) ksCard += '<span class="sub-status" style="background:#1e2040;color:#5ab0e0;border:1px solid #2a6a9a">Replay</span>';
+    ksCard += '<span class="chevron">▶</span>';
+  } else {
+    ksCard += '<a href="https://nicolaecatrina.com/kashmir-shaivism-retreat-2026/" target="_blank" class="ks-join-link" onclick="event.stopPropagation()">Vreau sa particip!</a>';
+  }
+  ksCard += '</div></div>';
+  if (isKsEnrolled) {
+    ksCard += '<div class="sub-body">';
+    ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">Sunteti inscris - incepand cu 25 iunie, 14:00 CEST.</div>';
+    if (hasLive)   ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">🔴 <strong style="color:#ccc">Live</strong>: participare in timp real la tabara.</div>';
+    if (hasReplay) ksCard += '<div style="font-size:12px;color:#888;margin-top:4px">📼 <strong style="color:#ccc">Replay</strong>: acces la inregistrarile taberei dupa finalizare.</div>';
+
+    ksCard += '</div>';
+  }
+  ksCard += '</div>';
+  var html = ksCard;
+  var hasCourseSubs = false;
+  courses.forEach(function(c) {
+    var sub = subs[c.id];
+    if (!sub) return;
+    hasCourseSubs = true;
+
+    var currStatus = sub.curr || '';
+    var nextStatus = sub.next || '';
+    var statusText = currStatus ? statusLabel(currStatus) : '—';
+    var currLetter = currStatus.replace(/\d+$/, '');
+    var statusClass = 'st-' + currLetter;
+    var isPaid = currLetter === 'P' || currLetter === 'F' || currLetter === 'G';
+
+    // Sessions: filter by course+group id, only for paid current month
+    var groupId = c.id + '-G' + (sub.G || '');
+    var courseSessions = [];
+    if (isPaid && sub.G) {
+      var allGroupSess = sessions.filter(function(s){ return s.id === groupId; });
+      // Build private override map for this student's email
+      var privateMap = {};
+      allGroupSess.forEach(function(s){
+        if(s.email && s.email === studentEmail) privateMap[s.session] = true;
+      });
+      // Private sessions for this student + public sessions not overridden by a private one
+      allGroupSess.forEach(function(s){
+        if(!s.email) {
+          if(!privateMap[s.session]) courseSessions.push(s);
+        } else if(s.email === studentEmail) {
+          courseSessions.push(s);
+        }
+      });
+    }
+    courseSessions.sort(function(a, b) {
+      var na = parseInt((a.session || '').replace(/\D/g,'')) || 0;
+      var nb = parseInt((b.session || '').replace(/\D/g,'')) || 0;
+      return na - nb;
+    });
+
+    html += '<div class="sub-card">';
+    html += '<div class="sub-header" onclick="toggleSub(this)">';
+    html += '<div class="sub-title">';
+    html += '<span class="sub-badge">' + esc(c.id) + '</span>';
+    html += '<span class="sub-label">' + esc(c.label) + '</span>';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:10px">';
+    html += '<span class="sub-status ' + statusClass + '">' + statusText + '</span>';
+    html += '<span class="chevron">▶</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="sub-body">';
+    html += '<div class="month-info">' + currMonth + ': ' + statusLabel(currStatus) + ' · ' + nextMonth + ': ' + statusLabel(nextStatus) + '</div>';
+
+    if (isPaid) {
+      if (courseSessions.length > 0) {
+        html += '<div class="session-list">';
+        courseSessions.forEach(function(s) {
+          html += '<span class="session-chip" data-cid="' + esc(c.id) + '" data-sess="' + esc(s.session) + '" data-url="' + esc(s.link) + '" onclick="playSession(this)">' + esc(s.session) + '</span>';
+        });
+        html += '</div>';
+        html += '<div class="player-box" id="pb_' + c.id.replace(/[^a-zA-Z0-9]/g,'_') + '"></div>';
+      } else {
+        html += '<div class="no-sessions">No sessions available yet</div>';
+      }
+    }
+
+    html += '</div>';
+    html += '</div>';
+  });
+
+  if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">No active subscriptions found</div>';
+  document.getElementById('subsList').innerHTML = html;
+}
+
+function toggleSub(el) {
+  var body = el.nextElementSibling;
+  var chevron = el.querySelector('.chevron');
+  var isOpen = body.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.sub-body').forEach(function(b){b.classList.remove('open');});
+  document.querySelectorAll('.chevron').forEach(function(c){c.classList.remove('open');});
+  if (!isOpen) {
+    body.classList.add('open');
+    chevron.classList.add('open');
+  }
+}
+
+function logout() {
+  student = null;
+  sessionStorage.removeItem('student');
+  sessionStorage.removeItem('loginCode');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+  document.querySelector('.bottom-bar').style.display = 'flex';
+  document.getElementById('contactBar').style.display = 'none';
+  inputs.forEach(function(i){ i.value = ''; });
+  msg('', true);
+}
+
+function statusLabel(s) {
+  if (!s) return 'Not paid';
+  var letter = s.replace(/\d+$/, '');
+  return {P:'Paid',F:'Full',G:'Paid',S:'Stopped'}[letter] || s;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function safeId(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+async function playSession(el) {
+  var courseId = el.dataset.cid, label = el.dataset.sess, url = el.dataset.url;
+  var box = document.getElementById('pb_' + safeId(courseId));
+  if (!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '<div class="player-loading">Loading ' + esc(label) + '…</div>';
+  try {
+    var res = await fetch(PROXY + '?action=vimeo_play', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({url: url})
+    }).then(function(r){return r.json();});
+    if (res.error) { box.innerHTML = '<div class="player-err">' + esc(res.error) + '</div>'; return; }
+    var sid = safeId(courseId);
+    box.innerHTML =
+      '<div class="player-pass">' +
+        '<span>Password:</span>' +
+        '<strong id="vpass_' + sid + '">' + esc(res.password) + '</strong>' +
+        '<button class="copy-btn" onclick="copyPass(\'' + sid + '\')">Copy</button>' +
+      '</div>' +
+      '<div class="player-embed">' + res.embed + '</div>';
+  } catch(e) { box.innerHTML = '<div class="player-err">Network error</div>'; }
+}
+
+async function copyPass(sid) {
+  var el = document.getElementById('vpass_' + sid);
+  if (!el) return;
+  try {
+    await navigator.clipboard.writeText(el.textContent);
+    el.style.color = '#7ec850';
+    setTimeout(function(){ el.style.color = ''; }, 1500);
+  } catch(e) {}
+}
+
+function openPopup(url) {
+  document.getElementById('popupFrame').src = url;
+  document.getElementById('popupOverlay').classList.add('open');
+}
+function closePopup() {
+  document.getElementById('popupOverlay').classList.remove('open');
+  document.getElementById('popupFrame').src = '';
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('popupOverlay')) closePopup();
+}
+
+async function loginSendCode() {
+  var email = document.getElementById('loginSendEmail').value.trim();
+  var msgEl = document.getElementById('loginSendMsg');
+  if (!email) { msgEl.textContent = 'Enter your email'; msgEl.style.color = '#e07070'; return; }
+  msgEl.textContent = 'Sending…'; msgEl.style.color = '#888';
+  try {
+    var res = await fetch(PROXY + '?action=sendcode', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: email})
+    }).then(function(r){return r.json();});
+    if (res.ok) {
+      msgEl.textContent = 'Code sent! Check your inbox.'; msgEl.style.color = '#7ec850';
+      document.getElementById('loginSendEmail').value = '';
+    } else {
+      msgEl.textContent = res.error || 'Failed to send code'; msgEl.style.color = '#e07070';
+    }
+  } catch(e) { msgEl.textContent = 'Network error'; msgEl.style.color = '#e07070'; }
+}
+
+function toggleContactBar() {
+  var form = document.getElementById('contactForm');
+  var chevron = document.getElementById('contactChevron');
+  var isOpen = form.classList.contains('open');
+  form.classList.toggle('open', !isOpen);
+  chevron.classList.toggle('open', !isOpen);
+}
+
+function setContactMsg(text, ok) {
+  var m = document.getElementById('contactMsgEl');
+  m.textContent = text;
+  m.style.color = ok ? '#7ec850' : '#e07070';
+}
+
+async function sendContactEmail() {
+  var subject = document.getElementById('contactSubject').value.trim();
+  var message = document.getElementById('contactMessage').value.trim();
+  if (!subject || !message) { setContactMsg('Fill in subject and message', false); return; }
+  var f = student && student.fields || {};
+  var btn = document.getElementById('contactSend');
+  btn.disabled = true;
+  setContactMsg('Sending…', true);
+  try {
+    var res = await fetch(PROXY + '?action=sendemail', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({subject: subject, message: message, replyTo: f.email || '', name: f.name || ''})
+    }).then(function(r){return r.json();});
+    if (res.ok) {
+      setContactMsg('Message sent!', true);
+      document.getElementById('contactSubject').value = '';
+      document.getElementById('contactMessage').value = '';
+    } else {
+      setContactMsg(res.error || 'Failed to send', false);
+    }
+  } catch(e) { setContactMsg('Network error', false); }
+  btn.disabled = false;
+}
+
+// Auto-login if session exists
+(function(){
+  try {
+    var code = sessionStorage.getItem('loginCode');
+    var cached = sessionStorage.getItem('student');
+    if (!code && !cached) return;
+    if (cached) { student = JSON.parse(cached); }
+    if (code) {
+      fetch(PROXY + '?action=login', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({code: code})
+      }).then(function(r){ return r.json(); }).then(function(res) {
+        if (res.ok && res.student && !res.isAdmin) {
+          student = res.student;
+          sessionStorage.setItem('student', JSON.stringify(student));
+        } else {
+          sessionStorage.removeItem('loginCode');
+          sessionStorage.removeItem('student');
+          return;
+        }
+        return loadCourseData().then(showDashboard);
+      }).catch(function() {
+        if (student) loadCourseData().then(showDashboard);
+      });
+    } else {
+      loadCourseData().then(showDashboard);
+    }
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

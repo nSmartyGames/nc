@@ -3,3 +3,7 @@ id_rsa
 id_rsa.pub
 sftp.duck
 *.mobileconfig
+.DS_Store
+~$*
+__pycache__/
+*.pyc

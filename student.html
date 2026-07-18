@@ -182,8 +182,8 @@ var T = {
   en: {
     logout: 'Logout',
     events: 'Events',
-    ondemand: 'On-demand',
-    ongoing: 'Ongoing',
+    ondemand: 'On-demand courses/modules',
+    ongoing: 'Ongoing courses',
     welcome: 'Welcome, ',
     contactTeacher: '✉ Contact',
     subjectPlaceholder: 'Subject',
@@ -218,10 +218,10 @@ var T = {
     ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
     ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
     ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
-    ksReplayUpload: 'On July 3rd, at 10:00 CEST, we will upload the link for watching the replay session.',
+    ksReplayUpload: 'Dear ones,<br><br>Below you will find the link to the website where you will find the recordings of the live event: <a href="https://nicolaecatrina.com/en/ks-2026-replay/" target="_blank" rel="noopener" style="color:#5ab0e0" onclick="event.stopPropagation()">https://nicolaecatrina.com/en/ks-2026-replay/</a><br><br>If at any point you need assistance please contact us.<br>The recordings will be available untill Sunday at 22:00, Romanian time.<br>Please make sure you watch them until then.<br><br>We do not allow the audio or video recording of the content of this event.',
     ksBuyReplay: 'If you attended the live retreat and wish to have access to the replay session as well, pay 100 lei.',
     ksBuyReplayBtn: 'Get replay access — 100 lei',
-    rudraSection: 'Initiation',
+    rudraSection: 'Initiation in the mantra of Rudra-Shiva',
     rudraEnrolled: 'Enrolled',
     rudraTitle: 'The initiation in the mantra of Rudra-Shiva',
     rudraDate: 'July 8, 2026',
@@ -237,8 +237,8 @@ var T = {
   ro: {
     logout: 'Deconectare',
     events: 'Evenimente',
-    ondemand: 'La cerere',
-    ongoing: 'În desfășurare',
+    ondemand: 'Cursuri/module la cerere',
+    ongoing: 'Cursuri în desfășurare',
     welcome: 'Bun venit, ',
     contactTeacher: '✉ Contact',
     subjectPlaceholder: 'Subiect',
@@ -251,7 +251,7 @@ var T = {
     months: ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'],
     statusNotPaid: 'Neachitat',
     statusPaid: 'Achitat',
-    statusFull: 'Integral',
+    statusFull: 'Achitat',
     statusStopped: 'Oprit',
     payNow: 'Plătesc acum',
     noSessions: 'Nicio sesiune disponibilă',
@@ -273,10 +273,10 @@ var T = {
     ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
     ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
     ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
-    ksReplayUpload: 'Pe 3 iulie, la 10:00 CEST, vom încărca link-ul pentru vizionarea sesiunii de reluare.',
+    ksReplayUpload: 'Dragii noștri,<br><br>Vă mulțumim pentru că v-ați înscris la Tabăra Internaționalâ de Șivaism Cașmirian din 2026 pe baza înregistrărilor.<br><br>Mai jos regăsiți link-ul către pagina de site unde veți găsi link-urile necesare pentru a accesa înregistrările taberei: <a href="https://nicolaecatrina.com/en/ks-2026-replay/" target="_blank" rel="noopener" style="color:#5ab0e0" onclick="event.stopPropagation()">https://nicolaecatrina.com/en/ks-2026-replay/</a><br><br>Cei care doriți să beneficiați de traducere în limba română, vă rugăm să dați click pe iconița din dreapta jos, care seamănă cu o rotiță și să selectați din meniu opțiunea audio- română.<br><br>Vă rugăm să ne contactați dacă aveți nevoie de asistență!<br>Nu suntem de acord cu înregistrarea audio-video a acestui eveniment!',
     ksBuyReplay: 'Dacă ai participat la tabăra live și dorești să ai acces și la sesiunea de reluare, achită 100 lei.',
     ksBuyReplayBtn: 'Obține acces la reluare — 100 lei',
-    rudraSection: 'Inițiere',
+    rudraSection: 'Inițiere în mantra lui Rudra-Shiva',
     rudraEnrolled: 'Înscris',
     rudraTitle: 'Inițierea în mantra lui Rudra-Șiva',
     rudraDate: '8 iulie 2026',
@@ -473,7 +473,11 @@ function showDashboard() {
     html += '<div class="sub-body">';
     var payUrl = COURSE_PAY_URLS[c.id];
     var nextPart;
-    if (!nextStatus && payUrl) {
+    if (currStatus === 'F') {
+      nextPart = nextMonth + ': ' + tr.statusPaid;
+    } else if (currStatus === 'F1' && payUrl) {
+      nextPart = '<a class="pay-now-btn" href="' + esc(payUrl) + '" target="_blank" rel="noopener">' + nextMonth + ': ' + tr.payNow + '</a>';
+    } else if (!nextStatus && payUrl) {
       nextPart = '<a class="pay-now-btn" href="' + esc(payUrl) + '" target="_blank" rel="noopener">' + nextMonth + ': ' + tr.payNow + '</a>';
     } else {
       nextPart = nextMonth + ': ' + statusLabel(nextStatus);
@@ -532,10 +536,15 @@ function rudraConfirmHTML(locDisplay) {
   var tr = t();
   var addrMap = {Cluj:'Bâlea nr.9K', 'București':'Alecu Russo nr.9', 'Bucharest':'Alecu Russo nr.9'};
   var addr = addrMap[locDisplay] || '';
+  var isCostinesti = locDisplay.indexOf('Costine') === 0;
+  var titleLine = isCostinesti ? '' : '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>';
+  var dateLine = isCostinesti
+    ? '📅 <strong>August, ' + locDisplay + '</strong>'
+    : '📅 <strong>' + tr.rudraDate + '</strong>, ' + tr.rudraAt + ' <strong>19:00</strong> &nbsp;·&nbsp; <strong>' + locDisplay + '</strong>';
   return '<div style="color:#7ec850;font-size:13px;margin-bottom:10px">' + tr.rudraThankYou + '</div>' +
     '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:6px">' +
-    '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
-    '📅 <strong>' + tr.rudraDate + '</strong>, ' + tr.rudraAt + ' <strong>19:00</strong> &nbsp;·&nbsp; <strong>' + locDisplay + '</strong>' +
+    titleLine +
+    dateLine +
     (addr ? '<br><span style="font-size:12px;color:#a07ae0">📍 ' + addr + '</span>' : '') +
     '</div>';
 }

@@ -143,7 +143,7 @@ function ncParseEmail($subj, $body, $from_name, $from_email, $reply_to, $cat) {
     if ($cat === 'ks26') {
         if (preg_match('/live\s*(?:and|&|\+|si|și)\s*replay|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/i', $subj . ' ' . $body))
             $p['session'] = 'both';
-        elseif (preg_match('/replay/i', $body))
+        elseif (preg_match('/replay|reaudi|reluare/i', $body))
             $p['session'] = 'replay';
     }
     return $p;
@@ -217,7 +217,7 @@ function ncParseOrder($subj, $body) {
     if ($o['course'] === 'KS26') {
         if (preg_match('/live\s*(?:and|&|\+|si|și)\s*replay|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/i', $prod . ' ' . $o['nota']))
             $o['session'] = 'both';
-        elseif (preg_match('/replay/i', $prod))
+        elseif (preg_match('/replay|reaudi|reluare/i', $prod . ' ' . $o['nota']))
             $o['session'] = 'replay';
         else
             $o['session'] = 'live';
@@ -281,11 +281,7 @@ function ncGetBody($mbox, $num, $struct, $prefix = '') {
     return $html ?? '';
 }
 function ncMakeDraft($cat, $from_name, $reply_to, $subject, $body_text) {
-    $first   = trim(preg_split('/[\s,]+/u', trim($from_name))[0] ?? '');
-    $foreign = !preg_match('/[ăâîșțĂÂÎȘȚ]/u', $from_name)
-            && !preg_match('/\b(Mihai|Andrei|Ion|Dan|Ana|Ioana|Maria|Radu|Bogdan|Florin|Lucian|Claudia|Monica|Simona|Cristina|Daniela|Raluca|Sorin|Adrian|Ciprian|Stefan|Carmen|Florenta|Ramona|Dragos|Olga|Eugeniu|Anca|Mihaela|Sergiu|Neculai|Cristea|Mircea|Leonard|Catalin|Razvan|Gabriela|Adelina|Doina|Camelia|Apostol|Victoria|Emanuel|Doru|Tanase|Livadaru|Gutan|Spiridon|Bargau|Totu|Catalin|Ciprian|Dinu|Florentа)\b/iu', $from_name);
-    $sign = $foreign ? "Best regards,\nNicolaeCatrina Team" : "Vă mulțumim!\nEchipa NicolaeCatrina";
-    $hi   = $first ? ($foreign ? "Dear $first," : "Bună ziua $first,") : ($foreign ? "Hello," : "Bună ziua,");
+    list($hi, $sign, $foreign) = ncGreetSign($from_name);
     $t    = strtolower($subject . ' ' . $body_text);
     switch ($cat) {
         case 'ks26':
@@ -309,6 +305,244 @@ function ncMakeDraft($cat, $from_name, $reply_to, $subject, $body_text) {
         default:
             return "$hi\n\nMulțumim pentru mesajul dumneavoastră. Vă vom răspunde în curând.\n\n$sign";
     }
+}
+
+// ── Greeting helper (shared by ncMakeDraft and auto-reply builders) ────────────
+function ncGreetSign($from_name) {
+    $foreign = !preg_match('/[ăâîșțĂÂÎȘȚ]/u', $from_name)
+            && !preg_match('/\b(Mihai|Andrei|Ion|Dan|Ana|Ioana|Maria|Radu|Bogdan|Florin|Lucian|Claudia|Monica|Simona|Cristina|Daniela|Raluca|Sorin|Adrian|Ciprian|Stefan|Carmen|Florenta|Ramona|Dragos|Olga|Eugeniu|Anca|Mihaela|Sergiu|Neculai|Cristea|Mircea|Leonard|Catalin|Razvan|Gabriela|Adelina|Doina|Camelia|Apostol|Victoria|Emanuel|Doru|Tanase|Livadaru|Gutan|Spiridon|Bargau|Totu|Catalin|Ciprian|Dinu|Florenta)\b/iu', $from_name);
+    $sign = $foreign ? "Best regards" : "Vă mulțumim!";
+    $hi   = $foreign ? "Hi" : "Bună ziua,";
+    return [$hi, $sign, $foreign];
+}
+function ncReSubj($s) { return preg_match('/^re:/i', $s) ? $s : 'Re: ' . $s; }
+
+// ── Rudra-Șiva initiation: location detection + confirmation text ──────────────
+// Rudra is the KS26 retreat's initiation add-on — only auto-file for someone who is already a
+// retreat participant (has a ks26.csv row); otherwise fall through to a draft instead of creating
+// a speculative/unpaid row.
+function ncKs26HasEmail($email) {
+    $em = strtolower(trim($email));
+    if (!$em) return false;
+    $f = __DIR__ . '/ks26.csv';
+    if (!file_exists($f)) return false;
+    $found = false;
+    if (($fh = fopen($f, 'r')) !== false) {
+        fgetcsv($fh);
+        while (($row = fgetcsv($fh)) !== false) {
+            if (strtolower(trim($row[1] ?? '')) === $em) { $found = true; break; }
+        }
+        fclose($fh);
+    }
+    return $found;
+}
+function ncDetectRudraLocation($text) {
+    if (preg_match('/costine[sș]ti/i', $text)) return 'Costinesti';
+    if (preg_match('/cluj/i',          $text)) return 'Cluj';
+    if (preg_match('/bucure[sș]ti/i',  $text)) return 'Bucuresti';
+    return '';
+}
+function ncRudraConfirmText($from_name, $loc) {
+    list($hi, $sign, $foreign) = ncGreetSign($from_name);
+    return $foreign
+        ? "$hi\n\nConfirmed — Rudra-Șiva initiation, location: $loc.\n\n$sign"
+        : "$hi\n\nConfirmăm înscrierea la inițierea Rudra-Șiva, locația $loc.\n\n$sign";
+}
+
+// ── KS26 live/replay confirmation ("live and replay" 100 RON / ~19 EUR combo) ──
+// Language is decided from the words in the incoming message itself (not the sender's name),
+// per the admin's instruction — someone with a foreign name can still write in Romanian.
+function ncIsForeignText($text) {
+    return !preg_match('/[ăâîșțĂÂÎȘȚ]/u', $text)
+        && !preg_match('/\b(salut|bun[ăa]|mul[țt]umesc|v[ăa]\s*rog|doresc|reluare|confirmare|particip|[îi]nregistrat[ăa]|dumneavoastr[ăa]|ziua)\b/iu', $text);
+}
+function ncKs26FindByEmail($email) {
+    $em = strtolower(trim($email));
+    if (!$em) return null;
+    $f = __DIR__ . '/ks26.csv';
+    if (!file_exists($f)) return null;
+    $found = null;
+    if (($fh = fopen($f, 'r')) !== false) {
+        fgetcsv($fh);
+        while (($row = fgetcsv($fh)) !== false) {
+            if (strtolower(trim($row[1] ?? '')) === $em) {
+                $found = ['name' => trim($row[0] ?? ''), 'email' => trim($row[1] ?? ''),
+                          'tax' => trim($row[2] ?? ''), 'session' => trim($row[3] ?? ''),
+                          'notes' => trim($row[4] ?? ''), 'rudra' => trim($row[5] ?? '')];
+                break;
+            }
+        }
+        fclose($fh);
+    }
+    return $found;
+}
+// In-place session change by email (like the ks26_edit endpoint) — avoids ks26_upsert's
+// email+session dedupe key creating a second row instead of upgrading the existing one.
+function ncKs26SetSession($email, $newSession) {
+    $em = strtolower(trim($email));
+    $f = __DIR__ . '/ks26.csv';
+    if (!$em || !file_exists($f)) return ['ok' => false];
+    $rows = []; $idx = -1;
+    if (($fh = fopen($f, 'r')) !== false) { fgetcsv($fh); while (($row = fgetcsv($fh)) !== false) $rows[] = $row; fclose($fh); }
+    for ($i = 0; $i < count($rows); $i++) { if (strtolower(trim($rows[$i][1] ?? '')) === $em) { $idx = $i; break; } }
+    if ($idx < 0) return ['ok' => false];
+    $rows[$idx][3] = $newSession;
+    $fh = fopen($f, 'w'); fputcsv($fh, ['name','email','tax','session','notes','rudra']);
+    foreach ($rows as $r) fputcsv($fh, $r);
+    fclose($fh);
+    return ['ok' => true, 'action' => 'updated'];
+}
+function ncKs26ReplayConfirmText($from_name, $session, $foreign) {
+    $hi    = $foreign ? "Hi" : "Bună ziua,";
+    $sign  = $foreign ? "Best regards" : "Vă mulțumim!";
+    $label = $session === 'both'
+        ? ($foreign ? 'Live + Replay access' : 'acces Live + Reluare')
+        : ($foreign ? 'Replay access' : 'acces la reluare');
+    return $foreign
+        ? "$hi\n\nConfirmed — $label for the Kashmir Shaivism 2026 Retreat. Please use the app to access the replay link.\n\n$sign"
+        : "$hi\n\nConfirmăm — $label pentru Retragerea Kashmir Shaivism 2026. Vă rugăm folosiți aplicația pentru a accesa linkul de reluare.\n\n$sign";
+}
+
+// ── AMRITA SHAKTIPATA (Bucharest ceremony / "impulsionare") ────────────────────
+// Mirrors mm_initiation.html's client-side checkEligibility() against mm_initiation.csv.
+function ncAmritaEligibility($email, $name) {
+    $csv = __DIR__ . '/mm_initiation.csv';
+    $e = strtolower(trim($email));
+    $n = strtolower(trim($name));
+    $sets = ['Part 1' => [], 'Part 2' => [], 'Iasi' => [], 'Cluj' => []];
+    if (file_exists($csv) && ($fh = fopen($csv, 'r')) !== false) {
+        fgetcsv($fh); // header
+        while (($row = fgetcsv($fh)) !== false) {
+            $part = trim($row[2] ?? '');
+            if (!isset($sets[$part])) continue;
+            $re = strtolower(trim($row[1] ?? ''));
+            $rn = strtolower(trim($row[0] ?? ''));
+            if ($re) $sets[$part][$re] = true;
+            if ($rn) $sets[$part][$rn] = true;
+        }
+        fclose($fh);
+    }
+    $has = function($part) use ($sets, $e, $n) {
+        return ($e && isset($sets[$part][$e])) || ($n && isset($sets[$part][$n]));
+    };
+    $p1 = $has('Part 1'); $p2 = $has('Part 2');
+    $ia = $has('Iasi');   $cl = $has('Cluj');
+    if (!$p1 && !$p2) return ['eligible' => false, 'reason' => 'nici o aprofundare'];
+    if ($p1 && $p2) {
+        if ($ia && $cl) return ['eligible' => false, 'reason' => 'ambele impulsionari facute'];
+        return ['eligible' => true, 'reason' => 'Part 1+2'];
+    }
+    if ($ia || $cl) return ['eligible' => false, 'reason' => 'lipseste aprofundarea a doua'];
+    return ['eligible' => true, 'reason' => ($p1 ? 'Part 1' : 'Part 2')];
+}
+// Is this email/name already queued as a 'Bucuresti' (pending ceremony) row?
+function ncAmritaAlreadyQueued($email, $name) {
+    $csv = __DIR__ . '/mm_initiation.csv';
+    if (!file_exists($csv)) return false;
+    $e = strtolower(trim($email));
+    $n = strtolower(trim($name));
+    $found = false;
+    if (($fh = fopen($csv, 'r')) !== false) {
+        fgetcsv($fh);
+        while (($row = fgetcsv($fh)) !== false) {
+            if (trim($row[2] ?? '') !== 'Bucuresti') continue;
+            if (($e && strtolower(trim($row[1] ?? '')) === $e) || ($n && strtolower(trim($row[0] ?? '')) === $n)) { $found = true; break; }
+        }
+        fclose($fh);
+    }
+    return $found;
+}
+function ncAmritaConfirmText($from_name) {
+    list($hi, $sign, $foreign) = ncGreetSign($from_name);
+    return $foreign
+        ? "$hi\n\nConfirmed — see you at the ceremony.\n\n$sign"
+        : "$hi\n\nConfirmăm participarea dumneavoastră.\n\n$sign";
+}
+
+// ── Payment-status lookup for "didn't receive course X" questions ──────────────
+// $studentsByEmail / $ks26ByEmail are pre-loaded maps (see email_scan) to avoid refetching
+// Airtable/ks26.csv per message when several 'q' emails are in the same scan.
+function ncPaymentStatusFromMap($studentsByEmail, $ks26ByEmail, $email, $course) {
+    $em = strtolower(trim($email));
+    if (!$em || !$course) return null;
+    if ($course === 'KS26') {
+        if (isset($ks26ByEmail[$em])) return ['found' => true, 'course' => 'KS26', 'session' => $ks26ByEmail[$em]['session'], 'tax' => $ks26ByEmail[$em]['tax']];
+        return ['found' => false, 'course' => 'KS26'];
+    }
+    if (!isset($studentsByEmail[$em])) return ['found' => false, 'course' => $course];
+    $subs = json_decode($studentsByEmail[$em]['subscriptions'] ?? '{}', true) ?: [];
+    if (isset($subs[$course])) {
+        return ['found' => true, 'course' => $course, 'curr' => $subs[$course]['curr'] ?? '', 'next' => $subs[$course]['next'] ?? '', 'group' => $subs[$course]['G'] ?? ''];
+    }
+    return ['found' => true, 'course' => $course, 'curr' => null, 'next' => null, 'all_courses' => array_keys($subs)];
+}
+function ncPaymentCheckNote($pc, $course) {
+    if (!$pc) return '';
+    if (!$pc['found']) return "Nu găsim nicio plată înregistrată pentru $course la adresa dumneavoastră. Vă rugăm trimiteți dovada plății (order # / dată).";
+    if ($course === 'KS26') return "Plata pentru KS26 este înregistrată (sesiune: " . ($pc['session'] ?: 'live') . ($pc['tax'] ? ", $pc[tax] RON" : '') . ").";
+    if ($pc['curr'] === null) return "Nu găsim un abonament la $course — cursurile înregistrate la dumneavoastră: " . (empty($pc['all_courses']) ? '(niciunul)' : implode(', ', $pc['all_courses'])) . ".";
+    $next = $pc['next'] ?: '(gol)';
+    $curr = $pc['curr'] ?: '(gol)';
+    return "Plata pentru $course este înregistrată — status curent: $curr, luna următoare: $next" . ($pc['group'] ? ", grupa G{$pc['group']}" : '') . ".";
+}
+
+// ── Shared writers (also used directly by ks26_upsert / csv_append cases below) ─
+function ncKs26Upsert($name, $email, $tax, $session, $notes, $rudra) {
+    $unm  = str_replace(["\n","\r"], '', trim($name));
+    $uem  = strtolower(str_replace(["\n","\r"], '', trim($email)));
+    $utax = str_replace(["\n","\r"], '', trim($tax));
+    $uses = str_replace(["\n","\r"], '', trim($session)) ?: 'live';
+    $unto = str_replace(["\n","\r"], '', trim($notes));
+    $uru  = str_replace(["\n","\r"], '', trim($rudra));
+    if (!$uem) return ['error' => 'Email required'];
+    $uf = __DIR__ . '/ks26.csv';
+    if (!file_exists($uf)) file_put_contents($uf, "name,email,tax,session,notes,rudra\n");
+    $urows = []; $uidx = -1;
+    if (($ufh = fopen($uf, 'r')) !== false) { fgetcsv($ufh); while (($ur=fgetcsv($ufh))!==false) $urows[]=$ur; fclose($ufh); }
+    for ($i=0;$i<count($urows);$i++) {
+        if (strtolower(trim($urows[$i][1]??''))===$uem && strtolower(trim($urows[$i][3]??''))===$uses) { $uidx=$i; break; }
+    }
+    if ($uidx>=0) {
+        if ($unm) $urows[$uidx][0]=$unm; if ($utax) $urows[$uidx][2]=$utax; if ($unto) $urows[$uidx][4]=$unto;
+        if ($uru !== '') $urows[$uidx][5]=$uru;
+        $uact='updated';
+    } else { $urows[]=[$unm,$uem,$utax,$uses,$unto,$uru]; $uact='created'; }
+    $ufh=fopen($uf,'w'); fputcsv($ufh,['name','email','tax','session','notes','rudra']);
+    foreach($urows as $ur) fputcsv($ufh,$ur); fclose($ufh);
+    return ['ok'=>true,'action'=>$uact];
+}
+function ncMmInitiationAppend($name, $email, $part) {
+    $name  = str_replace([',',"\n","\r"], '', trim($name));
+    $email = str_replace([',',"\n","\r"], '', trim($email));
+    $part  = str_replace([',',"\n","\r"], '', trim($part)) ?: 'Bucuresti';
+    if (!$name) return ['error' => 'Name required'];
+    $csv_file = __DIR__ . '/mm_initiation.csv';
+    $line = $name . ',' . $email . ',' . $part . "\n";
+    $ok = file_put_contents($csv_file, $line, FILE_APPEND | LOCK_EX);
+    return $ok !== false ? ['ok' => true] : ['error' => 'Write failed'];
+}
+function ncSendAdmin($to, $subj, $msg) {
+    if (!$to || !$subj || !$msg) return ['error' => 'to/subject/message required'];
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) return ['error' => 'Invalid email'];
+    $hdrs = ['Content-Type: text/plain; charset=UTF-8',
+             'From: NicolaeCatrina <contact@nicolaecatrina.com>',
+             'Reply-To: contact@nicolaecatrina.com'];
+    $sent = wp_mail($to, $subj, $msg, $hdrs);
+    if (!$sent) return ['error' => 'wp_mail failed'];
+    $imap_base = '{mail.nicolaecatrina.com:993/imap/ssl/novalidate-cert}';
+    $imbox = @imap_open($imap_base . 'INBOX', IMAP_USER, IMAP_PASS, 0, 1);
+    $saved_folder = '';
+    if ($imbox) {
+        $fl = imap_list($imbox, $imap_base, '*') ?: [];
+        foreach ($fl as $f) { if (stripos($f, 'sent') !== false) { $saved_folder = $f; break; } }
+        if (!$saved_folder) $saved_folder = $imap_base . 'Sent Messages';
+        $raw = "From: NicolaeCatrina <contact@nicolaecatrina.com>\r\n"
+             . "To: $to\r\n" . "Subject: $subj\r\n" . "Date: " . date('r') . "\r\n"
+             . "MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n" . $msg;
+        imap_append($imbox, $saved_folder, $raw, '\\Seen');
+        imap_close($imbox);
+    }
+    return ['ok' => true, 'saved_to' => str_replace($imap_base, '', $saved_folder)];
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -752,14 +986,7 @@ switch ($action) {
         break;
 
     case 'csv_append':
-        $name  = str_replace([',',"\n","\r"], '', trim($body['name']  ?? ''));
-        $email = str_replace([',',"\n","\r"], '', trim($body['email'] ?? ''));
-        $part  = str_replace([',',"\n","\r"], '', trim($body['part']  ?? 'new'));
-        if (!$name) { echo json_encode(['error' => 'Name required']); break; }
-        $csv_file = __DIR__ . '/mm_initiation.csv';
-        $line = $name . ',' . $email . ',' . $part . "\n";
-        $ok = file_put_contents($csv_file, $line, FILE_APPEND | LOCK_EX);
-        echo $ok !== false ? json_encode(['ok' => true]) : json_encode(['error' => 'Write failed']);
+        echo json_encode(ncMmInitiationAppend($body['name'] ?? '', $body['email'] ?? '', $body['part'] ?? 'Bucuresti'));
         break;
 
     case 'csv_delete':
@@ -779,11 +1006,19 @@ switch ($action) {
         $mark_rd = !empty($body['mark_read']);
         $mbox = @imap_open(IMAP_HOST, IMAP_USER, IMAP_PASS, 0, 1);
         if (!$mbox) { echo json_encode(['error' => 'IMAP: ' . imap_last_error()]); break; }
-        $nums = imap_search($mbox, 'UNSEEN') ?: [];
-        rsort($nums);
-        $nums = array_slice($nums, 0, 100);
-        $cats = ['ks26' => [], 'monthly' => [], 'initiation' => [], 'q' => [], 'other' => []];
-        foreach ($nums as $num) {
+        // Union of unread + manually-flagged — flagged is how the admin marks a message for a
+        // later look, so it always deserves a pass too, not just brand-new unread mail.
+        $unseenUids  = imap_search($mbox, 'UNSEEN', SE_UID) ?: [];
+        $flaggedUids = imap_search($mbox, 'FLAGGED', SE_UID) ?: [];
+        $uids = array_values(array_unique(array_merge($unseenUids, $flaggedUids)));
+        rsort($uids);
+        $uids = array_slice($uids, 0, 100);
+        $cats = ['ks26' => [], 'monthly' => [], 'initiation' => [], 'q' => [], 'other' => [], 'auto' => []];
+        // Lazily loaded once per scan, only if a 'q' email actually needs a payment check.
+        $studentsByEmail = null; $ks26ByEmail = null;
+        foreach ($uids as $uid) {
+            $num  = imap_msgno($mbox, $uid);
+            $flagged = in_array($uid, $flaggedUids);
             $hdr  = imap_headerinfo($mbox, $num);
             $ov   = imap_fetch_overview($mbox, (string)$num, 0);
             $from = $hdr->from[0]     ?? null;
@@ -794,7 +1029,7 @@ switch ($action) {
             $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
             $seen = !empty($ov[0]->seen);
             // B. Skip "Plată înregistrată" — mark as read, exclude
-            if (preg_match('/plat[ăa]\s*[îi]nregistrat[ăa]/i', $subj)) {
+            if (preg_match('/plat[ăa]\s*[îi]nregistrat[ăa]/iu', $subj)) {
                 imap_setflag_full($mbox, (string)$num, '\\Seen');
                 continue;
             }
@@ -804,15 +1039,15 @@ switch ($action) {
             $tx   = strtolower($subj . ' ' . $btxt);
             $is_q = preg_match('/\?\s*$/', trim($subj))
                  || preg_match('/not\s+received|haven.t\s+received|didn.t\s+receive|still\s+wait|not\s+arriv|no.*recording|recording.*not|not.*access/i', $tx);
-            if      (preg_match('/ks\s*26|kashmir|retreat\s*2026|reluare\s*ks/i', $tx))               $cat = 'ks26';
-            elseif  (preg_match('/impulsionar|ini[tț]ier|initiation|ceremoni|mahamrityunjaya/i', $tx)) $cat = 'initiation';
+            if      (preg_match('/ks\s*26|kashmir|retreat\s*2026|reluare\s*ks|replay|reaudi|reluare/i', $tx))               $cat = 'ks26';
+            elseif  (preg_match('/impulsionar|ini[tț]ier|initiation|ceremoni|mahamrityunjaya|rudra/i', $tx)) $cat = 'initiation';
             elseif  ($is_q && preg_match('/ytt|ttc|modul|yoga|tantr|lesson|class|record|session|link|access/i', $tx)) $cat = 'q';
             elseif  (preg_match('/ytt|ttc|modul\s*[123]|yoga\s*tantr|i\s*ching|alchimie|abonament|comand[ăa]\s*nou[ăa]|new order|order #/i', $tx)) $cat = 'monthly';
             else    $cat = 'other';
             $parsed = ncParseEmail($subj, $btxt, $fn, $fe, $re, $cat);
             // C. Other + payment confirm → reclassify for easier handling
             if ($cat === 'other' && ($parsed['is_payment'] || $parsed['is_order'])) {
-                $cat = preg_match('/ks\s*26|kashmir/i', $tx) ? 'ks26' : 'monthly';
+                $cat = preg_match('/ks\s*26|kashmir|replay|reaudi|reluare/i', $tx) ? 'ks26' : 'monthly';
                 $parsed['cat'] = $cat;
             }
             // Auto-upsert when all required payment fields are present
@@ -826,17 +1061,135 @@ switch ($action) {
                 $auto_action = ncUpsertSub($parsed['email'], $parsed['name'], $parsed['course'], $parsed['group'], $parsed['status'] ?? 'P', $TBL_S);
                 if (!empty($auto_action['ok'])) {
                     imap_setflag_full($mbox, (string)$num, '\\Seen');
+                    imap_clearflag_full($mbox, (string)$num, '\\Flagged');
                     continue;
                 }
             }
+            // D. Auto-answer: Rudra-Șiva initiation signup (location detected) → ks26.csv 'rudra'
+            //    column, or AMRITA SHAKTIPATA / "impulsionare" ceremony signup (eligible) →
+            //    mm_initiation.csv. Both send a confirmation email and clear the message —
+            //    everything else (including ineligible/undetected cases) stays a draft below.
+            $auto = null;
+            $hasEmail = !empty($parsed['email']) && filter_var($parsed['email'], FILTER_VALIDATE_EMAIL);
+            if ($cat === 'initiation') {
+                if (preg_match('/rudra/i', $tx)) {
+                    $parsed['sub'] = 'rudra';
+                    $loc = ncDetectRudraLocation($subj . ' ' . $btxt);
+                    $isParticipant = $hasEmail && ncKs26HasEmail($parsed['email']);
+                    $parsed['rudra_location'] = $loc;
+                    $parsed['rudra_is_participant'] = $isParticipant;
+                    if ($loc && $isParticipant) {
+                        $up = ncKs26Upsert($fn ?: $parsed['name'], $parsed['email'], '', 'live', '', $loc);
+                        if (!empty($up['ok'])) {
+                            $sr = ncSendAdmin($parsed['email'], ncReSubj($subj), ncRudraConfirmText($fn, $loc));
+                            $auto = ['type' => 'rudra', 'location' => $loc, 'csv_action' => $up['action'], 'email_sent' => !empty($sr['ok'])];
+                        }
+                    }
+                } elseif (preg_match('/mahamrityunjaya|mantra/i', $tx)) {
+                    $parsed['sub'] = 'other'; // different event/CSV entirely — needs a human answer
+                } else {
+                    $parsed['sub'] = 'amrita';
+                    $elig = ncAmritaEligibility($parsed['email'], $fn ?: $parsed['name']);
+                    $parsed['eligibility'] = $elig;
+                    if (!empty($elig['eligible']) && $hasEmail) {
+                        if (ncAmritaAlreadyQueued($parsed['email'], $fn ?: $parsed['name'])) {
+                            $auto = ['type' => 'amrita_dup'];
+                        } else {
+                            $ap = ncMmInitiationAppend($fn ?: $parsed['name'], $parsed['email'], 'Bucuresti');
+                            if (!empty($ap['ok'])) {
+                                $sr = ncSendAdmin($parsed['email'], ncReSubj($subj), ncAmritaConfirmText($fn));
+                                $auto = ['type' => 'amrita', 'csv_action' => 'appended', 'email_sent' => !empty($sr['ok'])];
+                            }
+                        }
+                    }
+                }
+            } elseif ($cat === 'ks26' && $hasEmail
+                   && in_array($parsed['session'], ['both', 'replay'], true)
+                   && ($parsed['is_order'] || preg_match('/confirm/i', $tx)
+                       || preg_match('/\d+(?:[.,]\d{1,2})?\s*(?:lei|ron|eur|euro|€)/i', $tx))) {
+                // KS26 "live and replay" combo (L+R) — someone already registered 'live' asking
+                // to also get the replay → upgrade in place to 'both' so the live row is kept,
+                // not duplicated. Someone not registered at all yet → filed straight into the
+                // L+R/replay-only session per ncParseEmail's detection ($parsed['session']).
+                // Trigger is deliberately not tied to an exact "100 RON"/"19 EUR" string — real
+                // orders (is_order) or any confirm/amount wording are enough; a bare question
+                // about replay availability (no order, no confirm, no amount) still falls to Q/draft.
+                $parsed['sub'] = 'ks26_replay';
+                $foreignMsg = ncIsForeignText($subj . ' ' . $btxt);
+                $existing = ncKs26FindByEmail($parsed['email']);
+                if ($existing) {
+                    $curSession = $existing['session'] ?: 'live';
+                    if ($curSession === 'live') {
+                        $up = ncKs26SetSession($parsed['email'], 'both');
+                        if (!empty($up['ok'])) {
+                            $sr = ncSendAdmin($parsed['email'], ncReSubj($subj), ncKs26ReplayConfirmText($fn, 'both', $foreignMsg));
+                            $auto = ['type' => 'ks26_replay', 'session' => 'both', 'csv_action' => 'upgraded', 'email_sent' => !empty($sr['ok'])];
+                        }
+                    } else {
+                        // Already replay or both — nothing to change, just confirm.
+                        $sr = ncSendAdmin($parsed['email'], ncReSubj($subj), ncKs26ReplayConfirmText($fn, $curSession, $foreignMsg));
+                        $auto = ['type' => 'ks26_replay', 'session' => $curSession, 'csv_action' => 'none', 'email_sent' => !empty($sr['ok'])];
+                    }
+                } else {
+                    // No prior row — file straight into whichever session ncParseEmail detected
+                    // ('both' for the L+R combo phrasing, 'replay' for a plain replay mention).
+                    $newSession = $parsed['session'];
+                    $amt = $parsed['amount'] ?: '100';
+                    $up = ncKs26Upsert($fn ?: $parsed['name'], $parsed['email'], $amt, $newSession, '', '');
+                    if (!empty($up['ok'])) {
+                        $sr = ncSendAdmin($parsed['email'], ncReSubj($subj), ncKs26ReplayConfirmText($fn, $newSession, $foreignMsg));
+                        $auto = ['type' => 'ks26_replay', 'session' => $newSession, 'csv_action' => $up['action'], 'email_sent' => !empty($sr['ok'])];
+                    }
+                }
+            }
+            if ($auto && !empty($auto['email_sent'])) {
+                imap_setflag_full($mbox, (string)$num, '\\Seen');
+                imap_clearflag_full($mbox, (string)$num, '\\Flagged');
+                $cats['auto'][] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe, 'reply_to' => $re,
+                                   'subject' => $subj, 'date' => $dstr, 'cat' => 'auto',
+                                   'auto' => array_merge($auto, ['orig_cat' => $cat])];
+                continue;
+            }
+            // E. Payment-status check for "didn't receive course X" questions — surfaced in the
+            //    draft so the admin doesn't have to look it up by hand; still sent manually.
+            if ($cat === 'q') {
+                $qcourse = $parsed['course'] ?: (preg_match('/ks\s*26|kashmir/i', $tx) ? 'KS26' : '');
+                if ($qcourse) {
+                    if ($studentsByEmail === null) {
+                        $studentsByEmail = [];
+                        $sall = atAll("$TBL_S?fields[]=fldTKQVFs3vrMrwWA&fields[]=fldUvZSA5jTlsLQFH");
+                        foreach (($sall['records'] ?? []) as $rec) {
+                            $sem = strtolower(trim($rec['fields']['email'] ?? ''));
+                            if ($sem) $studentsByEmail[$sem] = $rec['fields'];
+                        }
+                        $ks26ByEmail = [];
+                        $k26f = __DIR__ . '/ks26.csv';
+                        if (file_exists($k26f) && ($k26fh = fopen($k26f, 'r')) !== false) {
+                            fgetcsv($k26fh);
+                            while (($k26r = fgetcsv($k26fh)) !== false) {
+                                $k26em = strtolower(trim($k26r[1] ?? ''));
+                                if ($k26em) $ks26ByEmail[$k26em] = ['session' => trim($k26r[3] ?? 'live'), 'tax' => trim($k26r[2] ?? '')];
+                            }
+                            fclose($k26fh);
+                        }
+                    }
+                    $parsed['payment_check'] = ncPaymentStatusFromMap($studentsByEmail, $ks26ByEmail, $parsed['email'], $qcourse);
+                }
+            }
+            $draft = ncMakeDraft($cat, $fn, $re, $subj, $btxt);
+            if ($cat === 'q' && !empty($parsed['payment_check'])) {
+                $draft = str_replace(
+                    ['[Please describe the issue and provide access/link here]', '[Descrieți situația și oferiți link/acces]'],
+                    ncPaymentCheckNote($parsed['payment_check'], $qcourse), $draft);
+            }
             $cats[$cat][] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe, 'reply_to' => $re,
-                             'subject' => $subj, 'date' => $dstr, 'seen' => $seen, 'body' => $btxt,
-                             'draft' => ncMakeDraft($cat, $fn, $re, $subj, $btxt), 'cat' => $cat,
+                             'subject' => $subj, 'date' => $dstr, 'seen' => $seen, 'flagged' => $flagged, 'body' => $btxt,
+                             'draft' => $draft, 'cat' => $cat,
                              'parsed' => $parsed, 'auto_action' => $auto_action];
             if ($mark_rd && !$seen) imap_setflag_full($mbox, (string)$num, '\\Seen');
         }
         imap_close($mbox);
-        echo json_encode(['ok' => true, 'total' => count($nums), 'cats' => $cats]);
+        echo json_encode(['ok' => true, 'total' => count($uids), 'cats' => $cats]);
         break;
 
     case 'email_search':
@@ -890,6 +1243,10 @@ switch ($action) {
             $fe   = $from ? ($from->mailbox . '@' . ($from->host ?? '')) : '';
             $fn   = $from ? ncDecodeHeader($from->personal ?? '') : '';
             $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
+            // NETOPIA "Plată înregistrată" payment-confirmation emails — treated as already read,
+            // never worth surfacing in a review sweep (daily-orders' orders_mark clears them
+            // alongside their order; read-only here so we just exclude, can't set \Seen).
+            if (preg_match('/^\s*plat[ăa]\s*[îi]nregistrat[ăa]/iu', $subj)) continue;
             $dstr = date('d M Y, H:i', strtotime($hdr->date ?? 'now'));
             $btxt = mb_substr(trim(ncGetBody($mbox, $no, imap_fetchstructure($mbox, $no))), 0, 500);
             $results[] = ['uid' => $uid, 'from_name' => $fn, 'from_email' => $fe, 'subject' => $subj,
@@ -972,6 +1329,26 @@ switch ($action) {
             $p['uid']     = $uid;
             $p['flagged'] = in_array($uid, $flaggedUids);
             $p['date'] = date('Y-m-d H:i', strtotime($hdr->date ?? 'now'));
+            // Course not detected from product line/nota (blank nota, unrecognised wording, etc.)
+            // — fall back to the student's existing Airtable subscription, since a renewal payment
+            // almost always matches whatever course they're already enrolled in. Only safe when
+            // they have exactly one course on file; with more than one, surface the candidates
+            // instead of guessing (the fee/tax amount + nota month wording help pick the right one
+            // by hand — ncParseOrder already pulls both into $p['total']/$p['nota']/$p['month']).
+            if (!$p['course']) {
+                $f = $byEmail[strtolower($p['email'])] ?? null;
+                if ($f) {
+                    $subs = json_decode($f['subscriptions'] ?? '{}', true) ?: [];
+                    $courseKeys = array_keys($subs);
+                    if (count($courseKeys) === 1) {
+                        $p['course'] = $courseKeys[0];
+                        $p['course_source'] = 'inferred_from_student';
+                        if (!$p['group'] && !empty($subs[$p['course']]['G'])) $p['group'] = $subs[$p['course']]['G'];
+                    } elseif (count($courseKeys) > 1) {
+                        $p['course_candidates'] = $courseKeys;
+                    }
+                }
+            }
             // Duplicate / already-paid check
             if ($p['course'] === 'KS26') {
                 $key = strtolower($p['email']) . '|' . ($p['session'] ?: 'live');
@@ -1053,37 +1430,7 @@ switch ($action) {
         break;
 
     case 'send_admin':
-        $to   = trim($body['to']      ?? '');
-        $subj = trim($body['subject'] ?? '');
-        $msg  = trim($body['message'] ?? '');
-        if (!$to || !$subj || !$msg) { echo json_encode(['error' => 'to/subject/message required']); break; }
-        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) { echo json_encode(['error' => 'Invalid email']); break; }
-        $hdrs = ['Content-Type: text/plain; charset=UTF-8',
-                 'From: NicolaeCatrina <contact@nicolaecatrina.com>',
-                 'Reply-To: contact@nicolaecatrina.com'];
-        $sent = wp_mail($to, $subj, $msg, $hdrs);
-        if (!$sent) { echo json_encode(['error' => 'wp_mail failed']); break; }
-        // Append copy to IMAP Sent folder
-        $imap_base = '{mail.nicolaecatrina.com:993/imap/ssl/novalidate-cert}';
-        $imbox = @imap_open($imap_base . 'INBOX', IMAP_USER, IMAP_PASS, 0, 1);
-        $saved_folder = '';
-        if ($imbox) {
-            $fl = imap_list($imbox, $imap_base, '*') ?: [];
-            foreach ($fl as $f) {
-                if (stripos($f, 'sent') !== false) { $saved_folder = $f; break; }
-            }
-            if (!$saved_folder) $saved_folder = $imap_base . 'Sent Messages'; // cPanel Dovecot default
-            $raw = "From: NicolaeCatrina <contact@nicolaecatrina.com>\r\n"
-                 . "To: $to\r\n"
-                 . "Subject: $subj\r\n"
-                 . "Date: " . date('r') . "\r\n"
-                 . "MIME-Version: 1.0\r\n"
-                 . "Content-Type: text/plain; charset=UTF-8\r\n\r\n"
-                 . $msg;
-            imap_append($imbox, $saved_folder, $raw, '\\Seen');
-            imap_close($imbox);
-        }
-        echo json_encode(['ok' => true, 'saved_to' => str_replace($imap_base, '', $saved_folder)]);
+        echo json_encode(ncSendAdmin(trim($body['to'] ?? ''), trim($body['subject'] ?? ''), trim($body['message'] ?? '')));
         break;
 
     case 'upsert_sub':
@@ -1097,32 +1444,12 @@ switch ($action) {
         break;
 
     case 'ks26_upsert':
-        $unm  = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
-        $uem  = strtolower(str_replace(["\n","\r"], '', trim($body['email']   ?? '')));
-        $utax = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
-        $uses = str_replace(["\n","\r"], '', trim($body['session'] ?? 'live'));
-        $unto = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
-        if (!$uem) { echo json_encode(['error' => 'Email required']); break; }
-        $uf = __DIR__ . '/ks26.csv';
-        if (!file_exists($uf)) { file_put_contents($uf, "name,email,tax,session,notes\n"); }
-        $urows = []; $uidx = -1;
-        if (($ufh = fopen($uf, 'r')) !== false) { fgetcsv($ufh); while (($ur=fgetcsv($ufh))!==false) $urows[]=$ur; fclose($ufh); }
-        for ($i=0;$i<count($urows);$i++) {
-            if (strtolower(trim($urows[$i][1]??''))===$uem && strtolower(trim($urows[$i][3]??''))===$uses) { $uidx=$i; break; }
-        }
-        $uru = str_replace(["\n","\r"], '', trim($body['rudra'] ?? ''));
-        if ($uidx>=0) {
-            if ($unm) $urows[$uidx][0]=$unm; if ($utax) $urows[$uidx][2]=$utax; if ($unto) $urows[$uidx][4]=$unto;
-            if ($uru !== '') $urows[$uidx][5]=$uru;
-            $uact='updated';
-        } else { $urows[]=[$unm,$uem,$utax,$uses,$unto,$uru]; $uact='created'; }
-        $ufh=fopen($uf,'w'); fputcsv($ufh,['name','email','tax','session','notes','rudra']);
-        foreach($urows as $ur) fputcsv($ufh,$ur); fclose($ufh);
-        echo json_encode(['ok'=>true,'action'=>$uact]);
+        echo json_encode(ncKs26Upsert($body['name'] ?? '', $body['email'] ?? '', $body['tax'] ?? '', $body['session'] ?? 'live', $body['notes'] ?? '', $body['rudra'] ?? ''));
         break;
 
     case 'ks26_edit':
         $oe  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_email'] ?? '')));
+        $ose = strtolower(str_replace(["\n","\r"], '', trim($body['orig_session'] ?? '')));
         $nm  = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
         $ne  = strtolower(str_replace(["\n","\r"], '', trim($body['email']  ?? '')));
         $nt  = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
@@ -1133,7 +1460,13 @@ switch ($action) {
         if (!file_exists($ef)) { echo json_encode(['error' => 'File not found']); break; }
         $er = []; $ei = -1;
         if (($efh = fopen($ef,'r')) !== false) { fgetcsv($efh); while (($row=fgetcsv($efh))!==false) $er[]=$row; fclose($efh); }
-        for ($i=0;$i<count($er);$i++) { if (strtolower(trim($er[$i][1]??''))===$oe) { $ei=$i; break; } }
+        // Same email can have separate rows per session — when orig_session is given, match on
+        // both so editing one row (e.g. the 'live' row) never touches a sibling 'both'/'replay' row.
+        for ($i=0;$i<count($er);$i++) {
+            if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
+            if ($ose !== '' && strtolower(trim($er[$i][3]??'')) !== $ose) continue;
+            $ei = $i; break;
+        }
         $nru = str_replace(["\n","\r"], '', trim($body['rudra'] ?? "\x00"));
         if ($ei < 0) { echo json_encode(['error' => 'Record not found']); break; }
         if ($nm  !== '') $er[$ei][0] = $nm;
@@ -1197,16 +1530,23 @@ switch ($action) {
 
     case 'ks26_delete':
         $de = strtolower(str_replace(["\n","\r"], '', trim($body['email'] ?? '')));
+        $dse = strtolower(str_replace(["\n","\r"], '', trim($body['session'] ?? '')));
         if (!$de) { echo json_encode(['error' => 'email required']); break; }
         $df = __DIR__ . '/ks26.csv';
         if (!file_exists($df)) { echo json_encode(['error' => 'File not found']); break; }
-        $drows = []; $dfound = false;
+        $drows = []; $dfound = false; $ddeleted = false;
         if (($dfh = fopen($df,'r')) !== false) { fgetcsv($dfh); while (($dr=fgetcsv($dfh))!==false) $drows[]=$dr; fclose($dfh); }
-        $drows = array_filter($drows, function($r) use ($de, &$dfound) {
-            if (strtolower(trim($r[1]??'')) === $de) { $dfound = true; return false; }
-            return true;
+        // Same email can legitimately have separate rows per session (live/replay/both) —
+        // only delete the row matching both email AND session so removing one doesn't wipe the rest.
+        $drows = array_filter($drows, function($r) use ($de, $dse, &$dfound, &$ddeleted) {
+            if (strtolower(trim($r[1]??'')) !== $de) return true;
+            $dfound = true;
+            if ($dse !== '' && strtolower(trim($r[3]??'')) !== $dse) return true;
+            $ddeleted = true;
+            return false;
         });
         if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
+        if (!$ddeleted) { echo json_encode(['error' => 'No row matching that email + session']); break; }
         $dfh = fopen($df,'w'); fputcsv($dfh,['name','email','tax','session','notes','rudra']);
         foreach($drows as $dr) fputcsv($dfh,$dr); fclose($dfh);
         echo json_encode(['ok' => true]);
@@ -1267,9 +1607,14 @@ switch ($action) {
                 $tax   = trim($row[2] ?? '');
                 $sess  = strtolower(trim($row[3] ?? 'live')) ?: 'live';
                 $rudra = trim($row[5] ?? '');
+                // 'both' means L+R on a single row — expand into both flags so the student
+                // portal's hasLive/hasReplay checks (which only look for 'live'/'replay') see it.
+                $sessFlags = $sess === 'both' ? ['live', 'replay'] : [$sess];
                 if ($email && strpos($email, '@') !== false) {
                     if (!isset($enrollments[$email])) $enrollments[$email] = ['sessions' => [], 'rudra' => '', 'tax' => $tax];
-                    if (!in_array($sess, $enrollments[$email]['sessions'])) $enrollments[$email]['sessions'][] = $sess;
+                    foreach ($sessFlags as $sf) {
+                        if (!in_array($sf, $enrollments[$email]['sessions'])) $enrollments[$email]['sessions'][] = $sf;
+                    }
                     if ($rudra) $enrollments[$email]['rudra'] = $rudra;
                     if ($tax) $enrollments[$email]['tax'] = $tax;
                 }

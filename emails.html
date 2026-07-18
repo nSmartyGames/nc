@@ -28,6 +28,9 @@ body{background:#111;color:#ddd;font-family:system-ui,-apple-system,sans-serif;p
 .cb-initiation{background:#1a1230;color:#a07ed0}
 .cb-q{background:#2a1800;color:#e0a040}
 .cb-other{background:#2a2a2a;color:#777}
+.cb-auto{background:#0f2a10;color:#7ec850}
+.auto-line{padding:10px 14px 12px;color:#7ec850;font-size:13px}
+.auto-line .al-what{color:#9fcf8f}
 .from-name{font-weight:600;color:#ddd;white-space:nowrap}
 .from-em{color:#666;font-size:12px;white-space:nowrap}
 .subj{color:#aaa;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -94,6 +97,7 @@ body{background:#111;color:#ddd;font-family:system-ui,-apple-system,sans-serif;p
   <button class="tab"    data-tab="initiation" onclick="setTab('initiation')">✨ Initiation</button>
   <button class="tab"    data-tab="q"          onclick="setTab('q')">❓ Q</button>
   <button class="tab"    data-tab="other"      onclick="setTab('other')">Other</button>
+  <button class="tab"    data-tab="auto"       onclick="setTab('auto')">✓ Auto</button>
 </div>
 
 <div id="emailList"></div>
@@ -108,7 +112,7 @@ if (!sessionStorage.getItem('adminAuth')) {
 }
 
 var SK        = 'nc_emails_v1';
-var emailData = {ks26:[],monthly:[],initiation:[],q:[],other:[]};
+var emailData = {ks26:[],monthly:[],initiation:[],q:[],other:[],auto:[]};
 var activeTab = 'all';
 var done      = new Set();
 var lastScan  = '';
@@ -123,7 +127,8 @@ function loadState(){
   try{
     var p=JSON.parse(localStorage.getItem(SK)||'null');
     if(!p) return false;
-    emailData=p.emailData||{ks26:[],monthly:[],initiation:[],q:[],other:[]};
+    emailData=p.emailData||{ks26:[],monthly:[],initiation:[],q:[],other:[],auto:[]};
+    emailData.auto=emailData.auto||[];
     done=new Set(p.done||[]);
     lastScan=p.lastScan||'';
     return unresolved(allEmails()).length>0;
@@ -134,7 +139,8 @@ function allEmails(){return [].concat(emailData.ks26||[],emailData.monthly||[],e
 function tabEmails(){return activeTab==='all'?allEmails():(emailData[activeTab]||[]);}
 function unresolved(list){return (list||[]).filter(function(e){return !done.has(e.num);});}
 
-var catLabels={ks26:'KS26',monthly:'MONTHLY',initiation:'INITIATION',q:'Q',other:'OTHER'};
+var catLabels={ks26:'KS26',monthly:'MONTHLY',initiation:'INITIATION',q:'Q',other:'OTHER',auto:'AUTO'};
+var autoLabels={rudra:'Rudra-Șiva → ks26.csv',amrita:'AMRITA/impulsionare → mm_initiation.csv',amrita_dup:'AMRITA — already queued',ks26_replay:'KS26 replay confirmation → ks26.csv'};
 function reSubj(s){return /^re:/i.test(s)?s:'Re: '+s;}
 
 function updateTabs(){
@@ -144,7 +150,8 @@ function updateTabs(){
     monthly:    unresolved(emailData.monthly).length,
     initiation: unresolved(emailData.initiation).length,
     q:          unresolved(emailData.q).length,
-    other:      unresolved(emailData.other).length
+    other:      unresolved(emailData.other).length,
+    auto:       (emailData.auto||[]).length
   };
   document.querySelector('[data-tab="all"]').textContent        ='All ('           +u.all+')';
   document.querySelector('[data-tab="ks26"]').textContent       ='⛰ KS26 ('       +u.ks26+')';
@@ -152,10 +159,12 @@ function updateTabs(){
   document.querySelector('[data-tab="initiation"]').textContent ='✨ Initiation ('  +u.initiation+')';
   document.querySelector('[data-tab="q"]').textContent          ='❓ Q ('           +u.q+')';
   document.querySelector('[data-tab="other"]').textContent      ='Other ('         +u.other+')';
+  document.querySelector('[data-tab="auto"]').textContent       ='✓ Auto ('        +u.auto+')';
   var pre=lastScan?'Last scan: <b>'+esc(lastScan)+'</b> — ':'';
   document.getElementById('summary').innerHTML=pre
     +'Unresolved: <b>'+u.all+'</b> &nbsp; KS26: <b>'+u.ks26+'</b> &nbsp; Monthly: <b>'+u.monthly
-    +'</b> &nbsp; Q: <b>'+u.q+'</b> &nbsp; Initiation: <b>'+u.initiation+'</b> &nbsp; Other: <b>'+u.other+'</b>';
+    +'</b> &nbsp; Q: <b>'+u.q+'</b> &nbsp; Initiation: <b>'+u.initiation+'</b> &nbsp; Other: <b>'+u.other
+    +'</b> &nbsp; Auto-answered: <b>'+u.auto+'</b>';
   document.getElementById('tabs').style.display='flex';
 }
 
@@ -166,16 +175,17 @@ function setTab(t){
 }
 
 function render(){
-  var emails=unresolved(tabEmails());
+  var emails=activeTab==='auto'?(emailData.auto||[]).slice().reverse():unresolved(tabEmails());
   if(!emails.length){
     document.getElementById('emailList').innerHTML=
       '<div style="text-align:center;padding:30px;color:#444">'
-      +(unresolved(allEmails()).length?'No unresolved emails in this category.':'All resolved. Click Scan for new unread emails.')
+      +(activeTab==='auto'?'No auto-answered emails yet.':(unresolved(allEmails()).length?'No unresolved emails in this category.':'All resolved. Click Scan for new unread emails.'))
       +'</div>';
     return;
   }
   var html='';
   emails.forEach(function(e){
+    if(e.cat==='auto'){html+=buildAutoCard(e);return;}
     html+='<div class="email-card" id="ec_'+e.num+'">'
       +'<div class="card-head" onclick="toggleBody('+e.num+')">'
       +'<span class="dot'+(e.seen?' seen':'')+'"></span>'
@@ -209,6 +219,26 @@ function render(){
   document.getElementById('emailList').innerHTML=html;
 }
 
+// Auto-answered log entry — already sent + written to CSV server-side, informational only
+function buildAutoCard(e){
+  var a=e.auto||{};
+  var what=autoLabels[a.type]||a.type||'auto';
+  var detail=a.type==='rudra'?(' — locație: '+esc(a.location||'?')+' ('+esc(a.csv_action||'')+')')
+            :a.type==='amrita'?' — adăugat ca "Bucuresti" în mm_initiation.csv'
+            :a.type==='ks26_replay'?(' — sesiune: '+esc(a.session||'?')+' ('+esc(a.csv_action||'')+')'):'';
+  return '<div class="email-card" id="ec_'+e.num+'">'
+    +'<div class="card-head" onclick="toggleBody('+e.num+')">'
+    +'<span class="dot seen"></span>'
+    +'<span class="cat-badge cb-auto">AUTO</span>'
+    +'<span class="from-name">'+esc(e.from_name||e.from_email)+'</span>'
+    +'<span class="from-em">&lt;'+esc(e.from_email)+'&gt;</span>'
+    +'<span class="subj">'+esc(e.subject)+'</span>'
+    +'<span class="edate">'+esc(e.date)+'</span>'
+    +'</div>'
+    +'<div class="auto-line">✓ '+(a.email_sent?'Trimis automat':'Procesat')+' — <span class="al-what">'+esc(what)+'</span>'+detail+'</div>'
+    +'</div>';
+}
+
 // Persist edits to draft/to/subject in real time
 document.addEventListener('input',function(ev){
   var id=ev.target.id||'', num, field;
@@ -240,7 +270,31 @@ function buildParsedDetails(e){
     if(p.nota)  rows+='<div class="pd-row"><span class="pd-lbl">Notă</span><span class="pd-val">'+esc(p.nota)+'</span></div>';
     return '<div class="parsed-details">'+rows+updBtn+'</div>';
   }
+  var pc='';
+  if(e.cat==='q'&&p.payment_check){
+    var c=p.payment_check;
+    pc='<div class="pd-row"><span class="pd-lbl">Plată</span><span class="pd-val">'
+      +(!c.found?'<span style="color:#e07070">nicio plată găsită'+(c.course?' pentru '+esc(c.course):'')+'</span>'
+        :c.course==='KS26'?('<span style="color:#7ec850">KS26 — sesiune: '+esc(c.session||'live')+(c.tax?', '+esc(c.tax)+' RON':'')+'</span>')
+        :c.curr===null?('<span style="color:#e0a040">nu are abonament la '+esc(c.course)+' — are: '+(c.all_courses&&c.all_courses.length?esc(c.all_courses.join(', ')):'niciunul')+'</span>')
+        :('<span style="color:#7ec850">'+esc(c.course)+' — curr='+esc(c.curr||'-')+' next='+esc(c.next||'-')+(c.group?' G'+esc(c.group):'')+'</span>'))
+      +'</span></div>';
+  }
+  if(e.cat==='initiation'&&p.sub==='rudra'){
+    var rmsg;
+    if(!p.rudra_location) rmsg='<span style="color:#e0a040">nicio locație detectată (Cluj/Bucuresti/Costinesti) — răspuns manual</span>';
+    else if(!p.rudra_is_participant) rmsg='<span style="color:#e0a040">locație detectată: '+esc(p.rudra_location)+', dar nu e încă în ks26.csv — răspuns manual</span>';
+    else rmsg='<span style="color:#7ec850">locație detectată: '+esc(p.rudra_location)+'</span>';
+    pc='<div class="pd-row"><span class="pd-lbl">Rudra</span><span class="pd-val">'+rmsg+'</span></div>';
+  }
+  if(e.cat==='initiation'&&p.sub==='amrita'&&p.eligibility){
+    var el=p.eligibility;
+    pc='<div class="pd-row"><span class="pd-lbl">Eligibil</span><span class="pd-val">'
+      +(el.eligible?'<span style="color:#7ec850">da — '+esc(el.reason)+'</span>':'<span style="color:#e07070">nu — '+esc(el.reason)+'</span>')
+      +'</span></div>';
+  }
   return '<div class="parsed-details">'
+    +pc
     +'<div class="body-text">'+esc(e.body)+'</div>'
     +updBtn
     +'</div>';
@@ -281,10 +335,11 @@ async function sendDraft(num){
 function mergeWithExisting(newCats){
   var map={};
   allEmails().forEach(function(e){if(!done.has(e.num))map[e.num]=e;});
+  (emailData.auto||[]).forEach(function(e){map[e.num]=e;}); // auto log persists across scans, ignores `done`
   Object.keys(newCats).forEach(function(cat){
     (newCats[cat]||[]).forEach(function(e){if(!map[e.num])map[e.num]=e;});
   });
-  var r={ks26:[],monthly:[],initiation:[],q:[],other:[]};
+  var r={ks26:[],monthly:[],initiation:[],q:[],other:[],auto:[]};
   Object.values(map).forEach(function(e){var c=e.cat||'other';if(!r[c])r[c]=[];r[c].push(e);});
   return r;
 }
@@ -331,7 +386,14 @@ async function autoUpdate(num){
     } else if(e.cat==='ks26'){
       action='ks26_upsert';
       payload={name:name,email:email,tax:p.amount||'630',session:p.session||'live',notes:p.nota||''};
+    } else if(e.cat==='initiation'&&p.sub==='rudra'){
+      action='ks26_upsert';
+      payload={name:name,email:email,tax:'',session:'live',notes:'',rudra:p.rudra_location||''};
+    } else if(e.cat==='initiation'&&p.sub==='amrita'){
+      action='csv_append';
+      payload={name:name,email:email,part:'Bucuresti'};
     } else if(e.cat==='initiation'){
+      // Other initiation-type requests (e.g. Mahamrityunjaya mantra rounds) — separate CSV
       action='initiations_append';
       payload={name:name,email:email,status:'new'};
     } else {
@@ -362,36 +424,61 @@ function renderAddForm(e){
   var p=e.parsed||{};
   var nv=esc(p.name||e.from_name||'');
   var ev=esc((p.email||e.reply_to||e.from_email||'').trim());
-  var courses=['YTT-M1','YTT-M2','YTT-M3','I Ching','AL'];
-  var cOpts=courses.map(function(c){return '<option value="'+c+'"'+(p.course===c?' selected':'')+'>'+c+'</option>';}).join('');
+  var courses=['YTT-M1','YTT-M2','YTT-M3','I Ching','AL','KS26'];
+  var courseLabels={KS26:'KS26 (L+R)'};
+  var cOpts=courses.map(function(c){return '<option value="'+c+'"'+(p.course===c?' selected':'')+'>'+(courseLabels[c]||c)+'</option>';}).join('');
   var n=e.num, c=e.cat;
   if(c==='monthly'||c==='q'){
+    var isKs26=p.course==='KS26';
     return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
       +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
-      +'<div class="arow"><label>Course</label><select id="ac_'+n+'">'+cOpts+'</select></div>'
+      +'<div class="arow"><label>Course</label><select id="ac_'+n+'" onchange="toggleCourseKind('+n+')">'+cOpts+'</select></div>'
+      +'<div id="mf_'+n+'" style="display:'+(isKs26?'none':'block')+'">'
       +'<div class="arow"><label>Group #</label><input id="ag_'+n+'" value="'+esc(p.group||'')+'" placeholder="e.g. 6"></div>'
       +'<div class="arow"><label>Status</label><select id="as_'+n+'">'
       +'<option value="P">P — paid</option><option value="F">F — forever</option><option value="G">G — gratis</option></select></div>'
+      +'</div>'
+      +'<div id="kf_'+n+'" style="display:'+(isKs26?'block':'none')+'">'
+      +'<div class="arow"><label>Session</label><select id="ases_'+n+'">'
+      +'<option value="live"'+(p.session==='live'?' selected':'')+'>live</option>'
+      +'<option value="replay"'+(p.session==='replay'?' selected':'')+'>replay</option>'
+      +'<option value="both"'+(p.session!=='live'&&p.session!=='replay'?' selected':'')+'>L+R (both)</option></select></div>'
+      +'<div class="arow"><label>Amount</label><input id="aam_'+n+'" value="'+esc(p.amount||'')+'" placeholder="630"></div>'
+      +'</div>'
       +(p.is_order?'<div style="color:#e0a040;font-size:11px;margin-bottom:4px">⚡ WooCommerce order'+(p.nota?' — Nota: <b>'+esc(p.nota)+'</b>':'')+'</div>':'')
       +(!p.course?'<div style="color:#e07070;font-size:11px;margin-bottom:4px">⚠ Course not detected — check email body</div>':'')
-      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'monthly\')">+ Add to Students</button>';
+      +'<button class="btn-submit-add" id="ab_'+n+'" onclick="submitAdd('+n+',\'monthly\')">'+(isKs26?'+ Add to KS26 (check/add)':'+ Add to Students')+'</button>';
   } else if(c==='ks26'){
     return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
       +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
       +'<div class="arow"><label>Session</label><select id="ases_'+n+'">'
       +'<option value="live"'+(p.session==='live'?' selected':'')+'>live</option>'
-      +'<option value="replay"'+(p.session==='replay'?' selected':'')+'>replay</option></select></div>'
+      +'<option value="replay"'+(p.session==='replay'?' selected':'')+'>replay</option>'
+      +'<option value="both"'+(p.session==='both'?' selected':'')+'>L+R (both)</option></select></div>'
       +'<div class="arow"><label>Amount</label><input id="aam_'+n+'" value="'+esc(p.amount||'')+'" placeholder="630"></div>'
       +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'ks26\')">+ Add to KS26</button>';
   } else if(c==='initiation'){
+    var sub=p.sub||'other';
     return '<div class="arow"><label>Name</label><input id="an_'+n+'" value="'+nv+'"></div>'
       +'<div class="arow"><label>Email</label><input id="ae_'+n+'" value="'+ev+'"></div>'
-      +'<div class="arow"><label>Status</label><select id="ast_'+n+'">'
-      +'<option value="new">new</option><option value="confirmed">confirmed</option>'
-      +'<option value="waitlist">waitlist</option><option value="ineligible">ineligible</option></select></div>'
-      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'initiation\')">+ Add to Initiations</button>';
+      +'<div class="arow"><label>Destinație</label><select id="adst_'+n+'">'
+      +'<option value="rudra"'+(sub==='rudra'?' selected':'')+'>Rudra-Șiva → ks26.csv</option>'
+      +'<option value="amrita"'+(sub==='amrita'?' selected':'')+'>AMRITA/impulsionare → mm_initiation.csv</option>'
+      +'<option value="other"'+(sub==='other'?' selected':'')+'>Alt (Mahamrityunjaya etc.) → mahamrityunjaya.csv</option>'
+      +'</select></div>'
+      +'<div class="arow"><label>Locație</label><input id="arl_'+n+'" value="'+esc(p.rudra_location||'')+'" placeholder="Cluj/Bucuresti/Costinesti (doar Rudra)"></div>'
+      +'<button class="btn-submit-add" onclick="submitAdd('+n+',\'initiation\')">+ Add</button>';
   }
   return '<p style="color:#555;font-size:12px">Categorize as Monthly / KS26 / Initiation first to enable adding.</p>';
+}
+
+function toggleCourseKind(num){
+  var sel=document.getElementById('ac_'+num);if(!sel)return;
+  var isKs26=sel.value==='KS26';
+  var mf=document.getElementById('mf_'+num), kf=document.getElementById('kf_'+num), ab=document.getElementById('ab_'+num);
+  if(mf)mf.style.display=isKs26?'none':'block';
+  if(kf)kf.style.display=isKs26?'block':'none';
+  if(ab)ab.textContent=isKs26?'+ Add to KS26 (check/add)':'+ Add to Students';
 }
 
 function toggleAddForm(num){
@@ -412,11 +499,20 @@ async function submitAdd(num,cat){
   var payload,action;
   try{
     if(cat==='monthly'){
-      action='upsert_sub';
-      payload={name:name,email:email,
-        course:document.getElementById('ac_'+num).value,
-        group: document.getElementById('ag_'+num).value,
-        status:document.getElementById('as_'+num).value};
+      var courseVal=document.getElementById('ac_'+num).value;
+      if(courseVal==='KS26'){
+        action='ks26_upsert';
+        payload={name:name,email:email,
+          tax:    document.getElementById('aam_'+num).value||'630',
+          session:document.getElementById('ases_'+num).value||'both',
+          notes:'',rudra:''};
+      } else {
+        action='upsert_sub';
+        payload={name:name,email:email,
+          course:courseVal,
+          group: document.getElementById('ag_'+num).value,
+          status:document.getElementById('as_'+num).value};
+      }
     } else if(cat==='ks26'){
       action='ks26_append';
       payload={name:name,email:email,
@@ -424,9 +520,18 @@ async function submitAdd(num,cat){
         session:document.getElementById('ases_'+num).value,
         notes:''};
     } else if(cat==='initiation'){
-      action='initiations_append';
-      payload={name:name,email:email,
-        status:document.getElementById('ast_'+num).value||'new'};
+      var dst=document.getElementById('adst_'+num).value;
+      if(dst==='rudra'){
+        action='ks26_upsert';
+        payload={name:name,email:email,tax:'',session:'live',notes:'',
+          rudra:document.getElementById('arl_'+num).value||''};
+      } else if(dst==='amrita'){
+        action='csv_append';
+        payload={name:name,email:email,part:'Bucuresti'};
+      } else {
+        action='initiations_append';
+        payload={name:name,email:email,status:'new'};
+      }
     }
     var res=await fetch(PROXY+'?action='+action,{
       method:'POST',headers:{'Content-Type':'application/json'},
@@ -435,7 +540,7 @@ async function submitAdd(num,cat){
     var j=await res.json();
     if(j.error){sy('Error: '+j.error);return;}
     sy('');
-    var label={monthly:'Students (Airtable)',ks26:'KS26',initiation:'Initiations'}[cat]||cat;
+    var label=(cat==='monthly'&&action==='ks26_upsert')?'KS26':({monthly:'Students (Airtable)',ks26:'KS26',initiation:'Initiations'}[cat]||cat);
     var verb=j.action==='created'?'Created':'Updated';
     var ca=document.getElementById('ca_'+num);
     if(ca)ca.innerHTML='<div class="add-ok">✓ '+verb+': '+esc(name||email)+' → '+label+'</div>';
@@ -550,10 +655,12 @@ function cmdRun(){
   }
 }
 
-// Which orders are normal monthly subscriptions (auto-insertable)
+// Which orders are auto-insertable (monthly subs → Students, KS26 → ks26.csv)
 function cmdInsertable(o){
   var monthly={'YTT-M1':1,'YTT-M2':1,'YTT-M3':1,'I Ching':1,'AL':1};
-  if(o.course==='KS26'||!monthly[o.course]) return {ok:false,reason:'KS26 / non-monthly — handle manually'};
+  if(!o.course && o.course_candidates && o.course_candidates.length) return {ok:false,reason:'course unclear — student has: '+o.course_candidates.join(', ')+' (check fee/nota by hand)'};
+  if(o.course==='KS26') return {ok:true};
+  if(!monthly[o.course]) return {ok:false,reason:'non-monthly — handle manually'};
   if(o.course==='AL' && /seminar/i.test((o.nota||'')+' '+(o.course||''))) return {ok:false,reason:'AL seminar — not a monthly sub'};
   return {ok:true};
 }
@@ -577,11 +684,13 @@ function cmdRenderOrders(since){
     var c=o.check||{};
     var flag;
     if(!ins.ok)                       flag='<span class="ord-flag">⚠ '+cmdEsc(ins.reason)+'</span>';
+    else if(o.course==='KS26')        flag=c.already_paid?('<span class="ord-dup">DUP in ks26.csv — session='+cmdEsc(o.session)+'</span>'):('<span class="ord-new">new — session='+cmdEsc(o.session)+'</span>');
     else if(!c.student_exists)        flag='<span class="ord-new">NEW student</span>';
     else if(!c.has_course)            flag='<span class="ord-flag">⚠ exists, no '+cmdEsc(o.course)+' sub (verify key)</span>';
     else if(c.already_paid)           flag='<span class="ord-dup">DUP — next='+cmdEsc(c.next)+'</span>';
     else                              flag='<span class="cmd-muted">ok curr='+cmdEsc(c.curr)+' G='+cmdEsc(c.group)+'</span>';
-    var cg=cmdEsc(o.course)+(o.group?' G'+cmdEsc(o.group):'');
+    if(o.course_source==='inferred_from_student') flag+=' <span class="cmd-muted">[course inferred from Student table]</span>';
+    var cg=o.course?(cmdEsc(o.course)+(o.course==='KS26'?(' ('+cmdEsc(o.session)+')'):(o.group?' G'+cmdEsc(o.group):''))):'?';
     var checked=(ins.ok && !c.already_paid)?'checked':'';
     var dis=ins.ok?'':'disabled';
     rows+='<tr class="'+(ins.ok?'':'ord-skip')+'">'
@@ -621,11 +730,15 @@ async function cmdInsertSelected(){
   for(var k=0;k<sel.length;k++){
     var o=sel[k];
     try{
-      var res=await fetch(PROXY+'?action=upsert_sub',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:o.name,email:o.email,course:o.course,group:String(o.group||''),status:'P'})});
+      var action=o.course==='KS26'?'ks26_upsert':'upsert_sub';
+      var payload=o.course==='KS26'
+        ?{name:o.name,email:o.email,tax:String(o.total||''),session:o.session||'live',notes:o.nota||''}
+        :{name:o.name,email:o.email,course:o.course,group:String(o.group||''),status:'P'};
+      var res=await fetch(PROXY+'?action='+action,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)});
       var j=await res.json();
       if(j.error){errc++;cmdAppend('<div class="cmd-err">✗ '+cmdEsc(o.email)+' '+cmdEsc(o.course)+': '+cmdEsc(j.error)+'</div>');}
-      else{okc++;cmdAppend('<div class="cmd-ok">✓ '+cmdEsc(j.action||'ok')+' '+cmdEsc(o.name)+' — '+cmdEsc(o.course)+(o.group?' G'+cmdEsc(o.group):'')+'</div>');}
+      else{okc++;cmdAppend('<div class="cmd-ok">✓ '+cmdEsc(j.action||'ok')+' '+cmdEsc(o.name)+' — '+cmdEsc(o.course)+(o.course==='KS26'?(' ('+cmdEsc(o.session)+')'):(o.group?' G'+cmdEsc(o.group):''))+'</div>');}
     }catch(e){errc++;cmdAppend('<div class="cmd-err">✗ '+cmdEsc(o.email)+': '+cmdEsc(e.message)+'</div>');}
   }
   cmdAppend('<div style="margin-top:6px"><b class="cmd-ok">'+okc+' inserted</b>'+(errc?' <b class="cmd-err">'+errc+' failed</b>':'')

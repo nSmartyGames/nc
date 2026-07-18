@@ -35,14 +35,20 @@ def scan(days=2):
     hdr = f"{'#':>6} {'Date':16} {'Name':24} {'Email':32} {'Course/Grp':13} {'Sum':>8}  Check"
     print(hdr); print("-" * len(hdr))
     for o in orders:
-        cg = o["course"] + (" G" + o["group"] if o["group"] else "")
+        if not o["course"] and o.get("course_candidates"):
+            cg = "?"
+        else:
+            cg = o["course"] + (" G" + o["group"] if o["group"] else "")
         c = o.get("check", {})
-        if o["course"] == "KS26":
+        if not o["course"] and o.get("course_candidates"):
+            flag = f"course unclear — student has: {', '.join(o['course_candidates'])} (check fee/nota by hand)"
+        elif o["course"] == "KS26":
             flag = f"ALREADY IN ks26.csv (session={o.get('session')!r})" if c.get("already_paid") else f"new — session={o.get('session')!r}"
         elif not c.get("student_exists"): flag = "NEW student"
         elif not c.get("has_course"):     flag = f"no {o['course']} sub (curr courses differ)"
         elif c.get("already_paid"):       flag = f"ALREADY PAID next={c.get('next')!r}"
         else:                             flag = f"ok curr={c.get('curr')!r} G={c.get('group')!r}"
+        if o.get("course_source") == "inferred_from_student": flag += "  [course inferred from Student table]"
         if o.get("flagged"): flag = "[FLAGGED] " + flag
         print(f"{o['onum']:>6} {o['date']:16} {o['name'][:24]:24} {o['email'][:32]:32} {cg:13} {o['total']:>8}  {flag}")
     print("\n--- JSON ---")

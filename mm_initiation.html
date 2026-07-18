@@ -65,6 +65,7 @@ tbody tr.row-ineligible td{color:#e07070}
   <button type="button" class="nav-btn nb-logout" onclick="adminLogout()">Logout</button>
   <button type="button" class="nav-btn" onclick="location.href='yoga.html'">← Admin</button>
   <button type="button" class="nav-btn nb-copy" onclick="copyAllEmails()">Copy Emails</button>
+  <button type="button" class="nav-btn nb-copy" onclick="copyGreenEmails()">Copy Green Emails</button>
   <span id="sy"></span>
 </div>
 
@@ -76,6 +77,7 @@ tbody tr.row-ineligible td{color:#e07070}
   <button class="pbt" onclick="setPart('Iasi')">Iasi</button>
   <button class="pbt" onclick="setPart('Part 2')">Part 2</button>
   <button class="pbt" onclick="setPart('Cluj')">Cluj</button>
+  <span id="bkCount" class="pcount" style="color:#7ec850;font-weight:600"></span>
 </div>
 
 <div class="add-row">
@@ -184,7 +186,17 @@ function visible() {
   });
 }
 
+function updateGreenCount() {
+  var el = document.getElementById('bkCount');
+  if (!el) return;
+  var n = rows.filter(function(r) {
+    return r.part === 'Bucuresti' && checkEligibility(r.email, r.name).eligible === true;
+  }).length;
+  el.textContent = n + ' green (Bucuresti)';
+}
+
 function render() {
+  updateGreenCount();
   var v = visible();
   var tb = document.getElementById('tb');
   var tot = document.getElementById('totLabel');
@@ -196,7 +208,7 @@ function render() {
     var noem = !r.email.trim();
     var rowCls = '';
     var partContent = '<td style="font-size:12px;color:#888">' + esc(r.part) + '</td>';
-    if (r.part === 'new') {
+    if (r.part === 'Bucuresti') {
       var el = checkEligibility(r.email, r.name);
       if (el.eligible === true) {
         rowCls = ' class="row-eligible"';
@@ -233,14 +245,15 @@ async function delRow(idx) {
 async function dupRow(idx) {
   var r = rows[idx];
   var name = r.name, email = r.email;
-  rows.push({ name: name, email: email, part: 'new' });
+  var part = activePart !== 'All' ? activePart : r.part;
+  rows.push({ name: name, email: email, part: part });
   render();
   sy('Saving…');
   try {
     var resp = await fetch(PROXY + '?action=csv_append', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, email: email, part: 'new' })
+      body: JSON.stringify({ name: name, email: email, part: part })
     });
     var data = await resp.json();
     if (data.ok) { sy('Saved ✓'); setTimeout(function(){sy('');}, 2000); }
@@ -266,7 +279,8 @@ async function saveAdd() {
   var name  = document.getElementById('afName').value.trim();
   var email = document.getElementById('afEmail').value.trim();
   if (!name) { alert('Name is required'); return; }
-  rows.push({ name: name, email: email, part: 'new' });
+  var part = activePart !== 'All' ? activePart : 'Bucuresti';
+  rows.push({ name: name, email: email, part: part });
   cancelAdd();
   render();
   sy('Saving…');
@@ -274,7 +288,7 @@ async function saveAdd() {
     var resp = await fetch(PROXY + '?action=csv_append', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name, email: email, part: 'new' })
+      body: JSON.stringify({ name: name, email: email, part: part })
     });
     var data = await resp.json();
     if (data.ok) { sy('Saved ✓'); setTimeout(function(){sy('');}, 2000); }
@@ -289,6 +303,17 @@ function copyAllEmails() {
   if (!emails.length) { sy('No emails'); setTimeout(function(){sy('');}, 2000); return; }
   navigator.clipboard.writeText(emails.join(';')).then(function() {
     sy('Copied ' + emails.length + ' emails ✓');
+    setTimeout(function(){sy('');}, 2500);
+  });
+}
+
+function copyGreenEmails() {
+  var emails = rows
+    .filter(function(r) { return r.part === 'Bucuresti' && r.email.trim() && checkEligibility(r.email, r.name).eligible === true; })
+    .map(function(r) { return r.email.trim(); });
+  if (!emails.length) { sy('No green emails'); setTimeout(function(){sy('');}, 2000); return; }
+  navigator.clipboard.writeText(emails.join(';')).then(function() {
+    sy('Copied ' + emails.length + ' green emails ✓');
     setTimeout(function(){sy('');}, 2500);
   });
 }

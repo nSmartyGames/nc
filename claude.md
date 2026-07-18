@@ -109,8 +109,13 @@ Session id format: "YTT-M1-G6", "YTT-M2-G4", etc. Format: courseId-groupId.
 - `POST ?action=orders_scan` — read-only scan of unread WooCommerce orders (body: {"days":2}); parses name/email/course/group/total/nota + Airtable dup-check; `OP_READONLY`+`FT_PEEK`, never marks read
 - `POST ?action=orders_mark` — mark order emails + matching NETOPIA `Plată înregistrată` confirmations read (body: {"names":[...], "mark_failed":true}); `mark_failed` also clears `Comandă eșuată`/`Failed order`
 - `POST ?action=upsert_sub` — set a course's `next` status for a student by email; creates the student if new (body: {name,email,course,group,status})
+- `POST ?action=email_scan` — scans unread+flagged inbox (union), categorizes (ks26/monthly/initiation/q/other), auto-answers+auto-files Rudra-Șiva (location detected) and eligible AMRITA/impulsionare signups (sends confirmation via `send_admin`, writes `ks26.csv`/`mm_initiation.csv`, returned under `cats.auto`), attaches a payment-status lookup to "didn't receive course X" (`q`) emails, and returns a draft for every other message — nothing else is auto-sent (body: {"mark_read":bool})
+- `POST ?action=send_admin` — send one reply as `contact@nicolaecatrina.com`, archives a copy to `INBOX.Sent` (body: {to,subject,message})
 
-See the `daily-orders` skill (`.claude/skills/daily-orders/`) for the daily order-intake workflow built on these.
+See the `daily-orders` skill (`.claude/skills/daily-orders/`) for the daily WooCommerce order-intake
+workflow, and the `mails` skill (`.claude/skills/mails/`) for the general inbox triage above
+(`/mails` command). Draft-first is the standing rule for all email replies — only the two named
+auto-answer cases skip the draft step.
 
 ## Admin Table (yoga.html) Features
 - Dark theme, gold text, system-ui font
