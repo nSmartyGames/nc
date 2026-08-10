@@ -117,6 +117,17 @@ workflow, and the `mails` skill (`.claude/skills/mails/`) for the general inbox 
 (`/mails` command). Draft-first is the standing rule for all email replies — only the two named
 auto-answer cases skip the draft step.
 
+## Guest Access (student.html?guest=<slug>)
+`student.html` supports a no-login preview mode: `?guest=<slug>` looks up the slug in
+`guest-access.json` (repo root, deployed alongside student.html) and shows either a workshop
+preview (status `active`) or a "link no longer available" message (status `disabled`/not found).
+Normal login is unaffected — this only triggers when `?guest=` is present.
+`guest-access.json` also tracks known modules (mirrors Airtable `Courses`) and a full history of
+every guest-slug create/enable/disable. See the `guest-access` skill
+(`.claude/skills/guest-access/`) — always verify a slug isn't already registered before creating
+a new one; use `enable`/`disable` to change status. Deploy with `bash update.sh guest-access.json`
+(and `bash update.sh student.html` if the rendering logic changed).
+
 ## Admin Table (yoga.html) Features
 - Dark theme, gold text, system-ui font
 - Course badges header: one row per course, each with All + group buttons (G6, G7, etc.)

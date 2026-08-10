@@ -93,6 +93,16 @@ a:hover{text-decoration:underline}
 .ks-join-link:hover{background:#1e2a3a;text-decoration:none}
 .pay-now-btn{background:#2a2000;border:1px solid #7a5c00;color:#f0c030;border-radius:6px;padding:2px 10px;font-size:11px;font-family:inherit;cursor:pointer;font-weight:600}
 .pay-now-btn:hover{background:#3a3000;border-color:#d4a017}
+
+/* Guest preview */
+.guest-box{background:#242424;border:1px solid #3a3a3a;border-radius:12px;padding:30px;width:100%;max-width:420px;margin:60px auto 0;text-align:center;display:none}
+.guest-box .logo{font-size:25px;font-weight:700;color:#f0c030;margin-bottom:14px;letter-spacing:.5px}
+.guest-box h2{font-size:18px;color:#f0c030;margin-bottom:6px}
+.guest-box p{font-size:12px;color:#888;margin-bottom:16px;line-height:1.6}
+.guest-cta{display:inline-block;background:#2a2000;border:1px solid #7a5c00;color:#f0c030;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:600;text-decoration:none;margin-top:6px}
+.guest-cta:hover{background:#3a3000;border-color:#d4a017}
+.guest-login-link{display:block;margin-top:16px;font-size:12px;color:#5aa0d0;text-decoration:none}
+.guest-login-link:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -102,6 +112,15 @@ a:hover{text-decoration:underline}
   <div style="font-size:48px;animation:spin 1.4s linear infinite">⏳</div>
 </div>
 <style>@keyframes spin{0%{transform:rotate(0deg)}50%{transform:rotate(180deg)}100%{transform:rotate(360deg)}}</style>
+
+<!-- Guest preview (no login) -->
+<div class="guest-box" id="guestBox">
+  <div class="logo">nicolaecatrina.com</div>
+  <h2 id="guestTitle"></h2>
+  <p id="guestDesc"></p>
+  <div id="guestBody"></div>
+  <a class="guest-login-link" id="guestLoginLink" href="login.html">Login →</a>
+</div>
 
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard" style="display:none">
@@ -292,6 +311,69 @@ var T = {
 };
 
 function t() { return T[lang]; }
+
+var GT = {
+  en: {
+    disabledTitle: 'Link no longer available',
+    disabledDesc: 'This guest preview link has been disabled. Please log in or contact us for access.',
+    notFoundTitle: 'Invalid link',
+    notFoundDesc: 'This guest preview link is invalid.',
+    previewTitle: 'Guest preview',
+    previewCta: 'Enroll / Learn more',
+    login: 'Login →'
+  },
+  ro: {
+    disabledTitle: 'Link indisponibil',
+    disabledDesc: 'Acest link de previzualizare pentru invitați a fost dezactivat. Vă rugăm să vă autentificați sau să ne contactați pentru acces.',
+    notFoundTitle: 'Link invalid',
+    notFoundDesc: 'Acest link de previzualizare pentru invitați nu este valid.',
+    previewTitle: 'Previzualizare invitat',
+    previewCta: 'Înscrie-te / Detalii',
+    login: 'Autentificare →'
+  }
+};
+function gt() { return GT[lang] || GT.ro; }
+
+function getQueryParam(name) {
+  return new URLSearchParams(location.search).get(name);
+}
+
+function showGuestState(kind, workshop) {
+  document.getElementById('loader').style.display = 'none';
+  var tr = gt();
+  document.getElementById('guestBox').style.display = 'block';
+  document.getElementById('guestLoginLink').textContent = tr.login;
+  document.getElementById('guestLoginLink').href = BASE + 'login.html';
+  var title = document.getElementById('guestTitle');
+  var desc = document.getElementById('guestDesc');
+  var body = document.getElementById('guestBody');
+  body.innerHTML = '';
+  if (kind === 'preview') {
+    title.textContent = tr.previewTitle;
+    desc.textContent = (workshop && workshop.label) || '';
+    var payUrl = workshop && COURSE_PAY_URLS[workshop.moduleId];
+    if (payUrl) {
+      body.innerHTML = '<a class="guest-cta" href="' + esc(payUrl) + '" target="_blank" rel="noopener">' + tr.previewCta + '</a>';
+    }
+  } else if (kind === 'disabled') {
+    title.textContent = tr.disabledTitle;
+    desc.textContent = tr.disabledDesc;
+  } else {
+    title.textContent = tr.notFoundTitle;
+    desc.textContent = tr.notFoundDesc;
+  }
+}
+
+async function handleGuestAccess(slug) {
+  try {
+    var db = await fetch(BASE + 'guest-access.json', {cache: 'no-store'}).then(function(r){ return r.json(); });
+    var matches = (db.workshops || []).filter(function(w){ return w.slug === slug; });
+    var workshop = matches[0];
+    if (!workshop) { showGuestState('notfound'); return; }
+    if (workshop.status !== 'active') { showGuestState('disabled', workshop); return; }
+    showGuestState('preview', workshop);
+  } catch(e) { showGuestState('notfound'); }
+}
 
 function applyLang() {
   var tr = t();
@@ -679,6 +761,8 @@ async function sendContactEmail() {
 
 (function(){
   applyLang();
+  var guestSlug = getQueryParam('guest');
+  if (guestSlug) { handleGuestAccess(guestSlug); return; }
   try {
     var cached = sessionStorage.getItem('student');
     if (!cached) { window.location.href = BASE + 'login.html'; return; }
