@@ -1,0 +1,35 @@
+{
+  "modules": [
+    {"id": "YTT-M1", "label": "Yoga Tantrică Tibetană — Modulul 1", "source": "airtable:Courses"},
+    {"id": "YTT-M2", "label": "Yoga Tantrică Tibetană — Modulul 2", "source": "airtable:Courses"},
+    {"id": "YTT-M3", "label": "Yoga Tantrică Tibetană — Modulul 3", "source": "airtable:Courses"},
+    {"id": "I Ching", "label": "I Ching", "source": "airtable:Courses"},
+    {"id": "AL", "label": "Inițiere în misterele tradiției alchimice universale", "source": "airtable:Courses"}
+  ],
+  "workshops": [
+    {
+      "slug": "taoist-alchemy",
+      "label": "Taoist Alchemy",
+      "moduleId": "AL",
+      "status": "disabled",
+      "createdAt": "2026-08-10T00:00:00Z",
+      "updatedAt": "2026-08-10T00:00:00Z"
+    }
+  ],
+  "history": [
+    {
+      "ts": "2026-08-10T00:00:00Z",
+      "action": "created",
+      "slug": "taoist-alchemy",
+      "actor": "lucian.virtic@gmail.com",
+      "note": "Registered existing guest link (found live, untracked) into the guest-access database"
+    },
+    {
+      "ts": "2026-08-10T00:00:00Z",
+      "action": "disabled",
+      "slug": "taoist-alchemy",
+      "actor": "lucian.virtic@gmail.com",
+      "note": "Guest access disabled per request"
+    }
+  ]
+}
