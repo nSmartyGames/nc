@@ -12,6 +12,7 @@ A web-based subscriber management system for yoga and related courses, hosted on
 All files live in the project root:
 - `yoga.html` — Admin subscriber table
 - `student.html` — Student portal with login
+- `guest-access.json` — Feature flag (`{"enabled":bool}`) gating guest access on `student.html?guest=1`
 - `airtable-proxy.php` — PHP proxy to Airtable
 - `update.sh` — FTP deploy script (port 21, curl): `bash update.sh <filename>`
 - `watch-deploy.sh` — Auto-deploy watcher (monitors yoga.html, student.html, airtable-proxy.php)
@@ -27,6 +28,7 @@ All files live in the project root:
 bash update.sh yoga.html
 bash update.sh airtable-proxy.php
 bash update.sh student.html
+bash update.sh guest-access.json
 ```
 Always deploy `yoga.html` after any modification to it.
 Uploads via FTP (port 21, curl) to `public_html/app/` on nicolaecatrina.com and auto-refreshes matching Chrome tabs (Mac only). SSH port 65222 is blocked — use FTP only.
@@ -139,6 +141,7 @@ auto-answer cases skip the draft step.
 - Each card: course badge, label, current status, month info
 - Expanded card shows session links filtered by student's sessions field
 - Session stays in sessionStorage
+- Guest access: `student.html?guest=1` shows a read-only course list (id + label only, no status, no session links) when `guest-access.json`'s `enabled` flag is true; skips `?action=sessions`/`?action=ks2026` fetches entirely so no other student's data ever reaches the guest's browser
 
 ## Security (airtable-proxy.php)
 - CORS restricted to `https://nicolaecatrina.com` only (not `*`)

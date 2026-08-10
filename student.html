@@ -122,7 +122,7 @@ a:hover{text-decoration:underline}
     <button class="nav-btn" id="btnOngoing" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   </div>
   <div id="subsList"></div>
-  <div style="margin-top:18px;background:#1e1a0a;border:1px solid #5a4200;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
+  <div id="tgBox" style="margin-top:18px;background:#1e1a0a;border:1px solid #5a4200;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
     <svg width="28" height="28" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="120" cy="120" r="120" fill="#2CA5E0"/><path d="M176 70L152.6 174.8c-1.7 7.6-6.2 9.5-12.6 5.9l-34.8-25.6-16.8 16.2c-1.9 1.9-3.4 3.4-6.9 3.4l2.5-34.8 63.4-57.3c2.8-2.5-.6-3.8-4.2-1.4l-78.3 49.3-33.7-10.5c-7.3-2.3-7.5-7.3 1.5-10.8l131.5-50.7c6.1-2.2 11.4 1.5 9.4 11.3z" fill="white"/></svg>
     <div>
       <div id="tgTitle" style="font-size:13px;font-weight:600;color:#d4a017;margin-bottom:2px">Canal Telegram — Kashmir Shaivism Retreat 2026</div>
@@ -165,6 +165,7 @@ var student = null;
 var courses = [];
 var sessions = [];
 var ks2026Enrollments = {};
+var isGuest = false;
 
 var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
 
@@ -232,7 +233,9 @@ var T = {
     rudraBucharest: 'Bucharest',
     rudraBucharestBtn: '📍 Bucharest',
     rudraClujBtn: '📍 Cluj',
-    rudraDeadlinePassed: 'Registration closed on July 3, 2026.'
+    rudraDeadlinePassed: 'Registration closed on July 3, 2026.',
+    guestTitle: 'Guest access',
+    login: 'Login'
   },
   ro: {
     logout: 'Deconectare',
@@ -287,7 +290,9 @@ var T = {
     rudraBucharest: 'București',
     rudraBucharestBtn: '📍 București',
     rudraClujBtn: '📍 Cluj',
-    rudraDeadlinePassed: 'Înscrierea s-a închis pe 3 iulie 2026.'
+    rudraDeadlinePassed: 'Înscrierea s-a închis pe 3 iulie 2026.',
+    guestTitle: 'Acces vizitator',
+    login: 'Autentificare'
   }
 };
 
@@ -318,11 +323,12 @@ function setLang(l) {
   lang = l;
   localStorage.setItem('lang', l);
   applyLang();
-  if (student) showDashboard();
+  if (isGuest) showGuestDashboard();
+  else if (student) showDashboard();
 }
 
 
-async function loadCourseData() {
+async function loadCourses() {
   try {
     var cr = await fetch(PROXY + '?action=courses').then(function(r){return r.json();});
     courses = (cr.records || []).map(function(r){
@@ -330,6 +336,10 @@ async function loadCourseData() {
       return {id: f.id || '', label: f.label || '', groups: (f.groups || 'All').split(',')};
     });
   } catch(e) { courses = []; }
+}
+
+async function loadCourseData() {
+  await loadCourses();
   try {
     var sr = await fetch(PROXY + '?action=sessions').then(function(r){return r.json();});
     sessions = (sr.records || []).map(function(r){
@@ -517,6 +527,38 @@ function toggleSub(el) {
   }
 }
 
+function showGuestDashboard() {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('tgBox').style.display = 'none';
+  applyLang();
+
+  var tr = t();
+  document.getElementById('dashName').textContent = tr.guestTitle;
+  document.getElementById('dashEmail').textContent = '';
+
+  var btn = document.getElementById('btnLogout');
+  if (btn) {
+    btn.textContent = tr.login;
+    btn.classList.remove('nb-student');
+    btn.onclick = function () { window.location.href = BASE + 'login.html'; };
+  }
+
+  var html = '';
+  courses.forEach(function(c) {
+    html += '<div class="sub-card">';
+    html += '<div class="sub-header" style="cursor:default">';
+    html += '<div class="sub-title">';
+    html += '<span class="sub-badge">' + esc(c.id) + '</span>';
+    html += '<span class="sub-label">' + esc(c.label) + '</span>';
+    html += '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  if (!courses.length) html += '<div class="no-sessions" style="text-align:center;padding:30px">' + tr.noSubs + '</div>';
+  document.getElementById('subsList').innerHTML = html;
+}
+
 function logout() {
   student = null;
   sessionStorage.removeItem('student');
@@ -679,6 +721,14 @@ async function sendContactEmail() {
 
 (function(){
   applyLang();
+  if (new URLSearchParams(location.search).get('guest') === '1') {
+    fetch(BASE + 'guest-access.json').then(function(r){ return r.json(); }).catch(function(){ return null; }).then(function(cfg) {
+      if (!cfg || !cfg.enabled) { window.location.href = BASE + 'login.html'; return; }
+      isGuest = true;
+      return loadCourses().then(showGuestDashboard);
+    });
+    return;
+  }
   try {
     var cached = sessionStorage.getItem('student');
     if (!cached) { window.location.href = BASE + 'login.html'; return; }
