@@ -107,6 +107,8 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
 .popup-frame{width:100%;height:100%;border:none;display:block}
 .ks-badge{background:#0d2040!important;border-color:#2a5a9a!important;color:#5ab0e0!important}
 .ks-badge:hover{border-color:#5ab0e0!important;background:#162c50!important}
+.yob-badge{background:#0d2040!important;border-color:#2a5a9a!important;color:#5ab0e0!important}
+.yob-badge:hover{border-color:#5ab0e0!important;background:#162c50!important}
 .mm-badge{background:#1a0a2e!important;border-color:#6a3a9a!important;color:#c07ae0!important}
 .mm-badge:hover{border-color:#c07ae0!important;background:#2a1040!important}
 </style>
@@ -122,7 +124,8 @@ tfoot td{background:#111;border-top:2px solid #5a4000;padding:5px 12px;font-size
   <button type="button" class="nav-btn" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   <button type="button" class="nav-btn" onclick="location.href='emails.html'">📧 Emails</button>
   <button type="button" class="nav-btn" onclick="location.href='send.html'">📤 Send</button>
-  <button type="button" class="nav-btn nb-ks26" onclick="location.href='ks26.html'">⛰ KS26</button>
+  <button type="button" class="nav-btn nb-ks26" style="display:none" onclick="location.href='ks26.html'">⛰ KS26</button>
+  <button type="button" class="nav-btn nb-ks26" onclick="location.href='yob2026.html'">🧘 YOB-26</button>
   <button type="button" class="nav-btn nb-trans" id="transBtn" onclick="askTransition()">⚡ Transition</button>
   <button type="button" class="nav-btn nb-yes" id="transYes" onclick="confirmTransition()">✓ Yes</button>
   <button type="button" class="nav-btn nb-no" id="transNo" onclick="skipTransition()">✗ No</button>
@@ -243,6 +246,7 @@ var GROUP_PRICES={'YTT-M1-G8':225,'YTT-M3-G1':200,'I Ching-G1':175,'I Ching-G2':
 var TCOL={F:'#5aa0d0',P:'#7ec850',PEND:'#e0a040',G:'#a07ed0',S:'#e07070','':'#555'};
 var TORD=['F','P','PEND','G','S',''];
 var courses=[], rows=[], sessions=[];
+var SHOW_KS26=false;
 var activeCourse='YTT-M1', activeGroup='All', expandedCourse=null;
 var sCol=null, sDir=1, dTgt=null, editingId=null, editingPrepaidIdx=null, editingPrepaidSlot=null;
 
@@ -333,7 +337,8 @@ function buildCourseHeader(){
     var act=activeCourse===co.id?'active':'';
     return '<span class="cbadge '+act+'" onclick="toggleCourse(\''+co.id+'\')">'+esc(co.id)+'<span class="tip">'+esc(co.label)+'</span></span>';
   }).join('');
-  badges+='<span class="cbadge ks-badge" onclick="location.href=\'ks26.html\'">KS2026<span class="tip">Kashmir Shaivism Retreat 2026</span></span>';
+  if(SHOW_KS26) badges+='<span class="cbadge ks-badge" onclick="location.href=\'ks26.html\'">KS2026<span class="tip">Kashmir Shaivism Retreat 2026</span></span>';
+  badges+='<span class="cbadge yob-badge" onclick="location.href=\'yob2026.html\'">YOB-26<span class="tip">YOB 2026</span></span>';
   badges+='<span class="cbadge mm-badge" onclick="location.href=\'mm_initiation.html\'">MM Init<span class="tip">MM Initiation</span></span>';
   var groups='';
   if(expandedCourse){
@@ -749,19 +754,18 @@ async function doTransition(){
     var clearNota=false;
     Object.keys(subs).forEach(function(cid){
       var s=subs[cid];
-      var oldCurr=s.curr||'';
-      var oldCurrLetter=statusLetter(oldCurr);
-      var oldCurrNum=statusNum(oldCurr);
       s.curr=s.next||'';
-      if(oldCurrLetter==='S'){
+      var newCurrLetter=statusLetter(s.curr);
+      var newCurrNum=statusNum(s.curr);
+      if(newCurrLetter==='S'){
         s.next='S';
-      } else if(oldCurrLetter==='F'&&oldCurrNum===null){
+      } else if(newCurrLetter==='F'&&newCurrNum===null){
         s.next='F';
-      } else if(oldCurrNum!==null&&oldCurrNum>1){
-        s.next=oldCurrLetter+(oldCurrNum-1);
+      } else if(newCurrNum!==null&&newCurrNum>1){
+        s.next=newCurrLetter+(newCurrNum-1);
       } else {
         s.next='';
-        if(oldCurrNum===1) clearNota=true;
+        if(newCurrNum===1) clearNota=true;
       }
     });
     if(clearNota) row.note='';
