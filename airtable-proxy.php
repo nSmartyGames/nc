@@ -1513,6 +1513,88 @@ switch ($action) {
         echo json_encode(['ok' => true, 'flagged' => $flag, 'seen' => $markSeen]);
         break;
 
+    case 'yob26_edit':
+        $oe  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_email'] ?? '')));
+        $ose = strtolower(str_replace(["\n","\r"], '', trim($body['orig_session'] ?? '')));
+        $nm  = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
+        $ne  = strtolower(str_replace(["\n","\r"], '', trim($body['email']  ?? '')));
+        $nt  = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
+        $nse = str_replace(["\n","\r"], '', trim($body['session'] ?? ''));
+        $nno = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
+        if (!$oe) { echo json_encode(['error' => 'orig_email required']); break; }
+        $ef = __DIR__ . '/yob26.csv';
+        if (!file_exists($ef)) { echo json_encode(['error' => 'File not found']); break; }
+        $er = []; $ei = -1;
+        if (($efh = fopen($ef,'r')) !== false) { fgetcsv($efh); while (($row=fgetcsv($efh))!==false) $er[]=$row; fclose($efh); }
+        for ($i=0;$i<count($er);$i++) {
+            if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
+            if ($ose !== '' && strtolower(trim($er[$i][3]??'')) !== $ose) continue;
+            $ei = $i; break;
+        }
+        if ($ei < 0) { echo json_encode(['error' => 'Record not found']); break; }
+        if ($nm  !== '') $er[$ei][0] = $nm;
+        if ($ne  !== '') $er[$ei][1] = $ne;
+        $er[$ei][2] = $nt;
+        if ($nse !== '') $er[$ei][3] = $nse;
+        $er[$ei][4] = $nno;
+        $efh = fopen($ef,'w'); fputcsv($efh,['name','email','tax','session','notes']);
+        foreach($er as $row) fputcsv($efh,$row); fclose($efh);
+        echo json_encode(['ok' => true]);
+        break;
+
+    case 'yob26_read':
+        $f = __DIR__ . '/yob26.csv';
+        if (!file_exists($f)) { echo json_encode(['rows' => []]); break; }
+        $rows = [];
+        if (($fh = fopen($f, 'r')) !== false) {
+            fgetcsv($fh); // skip header
+            while (($row = fgetcsv($fh)) !== false) {
+                if (count($row) < 4) continue;
+                $rows[] = ['name' => trim($row[0]), 'email' => trim($row[1]), 'tax' => trim($row[2]), 'session' => trim($row[3]), 'notes' => trim($row[4] ?? '')];
+            }
+            fclose($fh);
+        }
+        echo json_encode(['rows' => $rows]);
+        break;
+
+    case 'yob26_delete':
+        $de = strtolower(str_replace(["\n","\r"], '', trim($body['email'] ?? '')));
+        $dse = strtolower(str_replace(["\n","\r"], '', trim($body['session'] ?? '')));
+        if (!$de) { echo json_encode(['error' => 'email required']); break; }
+        $df = __DIR__ . '/yob26.csv';
+        if (!file_exists($df)) { echo json_encode(['error' => 'File not found']); break; }
+        $drows = []; $dfound = false; $ddeleted = false;
+        if (($dfh = fopen($df,'r')) !== false) { fgetcsv($dfh); while (($dr=fgetcsv($dfh))!==false) $drows[]=$dr; fclose($dfh); }
+        $drows = array_filter($drows, function($r) use ($de, $dse, &$dfound, &$ddeleted) {
+            if (strtolower(trim($r[1]??'')) !== $de) return true;
+            $dfound = true;
+            if ($dse !== '' && strtolower(trim($r[3]??'')) !== $dse) return true;
+            $ddeleted = true;
+            return false;
+        });
+        if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
+        if (!$ddeleted) { echo json_encode(['error' => 'No row matching that email + session']); break; }
+        $dfh = fopen($df,'w'); fputcsv($dfh,['name','email','tax','session','notes']);
+        foreach($drows as $dr) fputcsv($dfh,$dr); fclose($dfh);
+        echo json_encode(['ok' => true]);
+        break;
+
+    case 'yob26_append':
+        $name    = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
+        $email   = str_replace(["\n","\r"], '', trim($body['email']   ?? ''));
+        $tax     = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
+        $session = str_replace(["\n","\r"], '', trim($body['session'] ?? 'inperson'));
+        $notes   = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
+        if (!$name && !$email) { echo json_encode(['error' => 'Name or email required']); break; }
+        $f = __DIR__ . '/yob26.csv';
+        if (!file_exists($f)) file_put_contents($f, "name,email,tax,session,notes\n");
+        $fh = fopen($f, 'a');
+        if (!$fh) { echo json_encode(['error' => 'Write failed']); break; }
+        fputcsv($fh, [$name, $email, $tax, $session, $notes]);
+        fclose($fh);
+        echo json_encode(['ok' => true]);
+        break;
+
     case 'ks26_read':
         $f = __DIR__ . '/ks26.csv';
         if (!file_exists($f)) { echo json_encode(['rows' => []]); break; }

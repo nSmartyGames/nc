@@ -39,6 +39,7 @@ a:hover{text-decoration:underline}
 .session-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 .session-chip{font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:6px;padding:4px 12px;cursor:pointer;user-select:none}
 .session-chip:hover{background:#1e2a3a}
+.session-note{font-size:12px;color:#aaa;line-height:1.6;padding:8px 0}
 .no-sessions{font-size:12px;color:#555;padding:10px 0}
 .player-box{margin-top:12px;display:none}
 .player-loading{font-size:12px;color:#888;padding:8px 0}
@@ -89,8 +90,6 @@ a:hover{text-decoration:underline}
 .popup-close{position:absolute;top:8px;right:10px;z-index:10;background:#3a3a3a;color:#d4a017;border:1px solid #555;border-radius:6px;padding:4px 14px;font-size:13px;cursor:pointer;font-weight:700;font-family:inherit}
 .popup-close:hover{background:#555;border-color:#d4a017}
 .popup-frame{width:100%;height:100%;border:none;display:block}
-.ks-join-link{display:inline-block;font-size:12px;color:#5aa0d0;border:1px solid #2a5a8a;border-radius:12px;padding:3px 12px;text-decoration:none;font-weight:600}
-.ks-join-link:hover{background:#1e2a3a;text-decoration:none}
 .pay-now-btn{background:#2a2000;border:1px solid #7a5c00;color:#f0c030;border-radius:6px;padding:2px 10px;font-size:11px;font-family:inherit;cursor:pointer;font-weight:600}
 .pay-now-btn:hover{background:#3a3000;border-color:#d4a017}
 </style>
@@ -122,14 +121,6 @@ a:hover{text-decoration:underline}
     <button class="nav-btn" id="btnOngoing" onclick="openPopup('https://nicolaecatrina.com/en/ongoing-courses-online/')">Ongoing</button>
   </div>
   <div id="subsList"></div>
-  <div style="margin-top:18px;background:#1e1a0a;border:1px solid #5a4200;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px">
-    <svg width="28" height="28" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="120" cy="120" r="120" fill="#2CA5E0"/><path d="M176 70L152.6 174.8c-1.7 7.6-6.2 9.5-12.6 5.9l-34.8-25.6-16.8 16.2c-1.9 1.9-3.4 3.4-6.9 3.4l2.5-34.8 63.4-57.3c2.8-2.5-.6-3.8-4.2-1.4l-78.3 49.3-33.7-10.5c-7.3-2.3-7.5-7.3 1.5-10.8l131.5-50.7c6.1-2.2 11.4 1.5 9.4 11.3z" fill="white"/></svg>
-    <div>
-      <div id="tgTitle" style="font-size:13px;font-weight:600;color:#d4a017;margin-bottom:2px">Canal Telegram — Kashmir Shaivism Retreat 2026</div>
-      <div id="tgDesc" style="font-size:12px;color:#aaa;margin-bottom:6px">anunțuri, linkuri și actualizări / announcements, links and updates.</div>
-      <a href="https://t.me/+xFgy-nFpA4E4ODRk" target="_blank" rel="noopener" style="display:inline-block;background:#0d1e2e;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:4px 14px;font-size:12px;font-weight:600;text-decoration:none" id="tgJoin">Alătură-te →</a>
-    </div>
-  </div>
 </div>
 
 
@@ -168,6 +159,20 @@ var ks2026Enrollments = {};
 
 var BASE = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
 
+var GUEST_WORKSHOPS = {
+  'taoist-alchemy': {
+    label: 'Module 1',
+    videos: [
+      {session: 'Session 1', id: '471560713'},
+      {session: 'Session 2', id: '471745895'},
+      {session: 'Session 3', id: '471859106'},
+      {session: 'Session 4', id: '471861307'},
+      {session: 'Session 5', id: '471907879'},
+      {session: 'Session 6', id: '472088309'}
+    ]
+  }
+};
+
 var COURSE_PAY_URLS = {
   'YTT-M1': 'https://nicolaecatrina.com/yoga-tantrica-tibetana-curs-online-modulul-1/',
   'YTT-M2': 'https://nicolaecatrina.com/yoga-tantrica-tibetana-curs-online-modulul-2/',
@@ -190,9 +195,6 @@ var T = {
     messagePlaceholder: 'Your message…',
     send: 'Send',
     close: '✕ Close',
-    tgTitle: 'Telegram Channel — Kashmir Shaivism Retreat 2026',
-    tgDesc: 'announcements and notifications.',
-    tgJoin: 'Join →',
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     statusNotPaid: 'Not paid',
     statusPaid: 'Paid',
@@ -209,30 +211,12 @@ var T = {
     sending: 'Sending…',
     messageSent: 'Message sent!',
     failedToSend: 'Failed to send',
-    ksJoin: 'I want to join!',
     ksTypeLabel: function(hasLive, hasReplay) {
       return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
     },
-    ksThankYou: 'Thank you for registering for the 2026 Kashmir Shaivism Retreat!',
-    ksStarting: '🗓 Starting June 25, 14:30 CEST',
-    ksReplayNote: '📼 <strong>Replay</strong>: access to the retreat recordings after completion.',
-    ksReplayWait: 'Thank you for registering for the replay session of the 2026 Kashmir Shaivism Retreat.',
-    ksReplayStart: '🗓 Starting July 3rd, 10:00 CEST (11:00 Romania time)',
-    ksReplayUpload: 'Dear ones,<br><br>Below you will find the link to the website where you will find the recordings of the live event: <a href="https://nicolaecatrina.com/en/ks-2026-replay/" target="_blank" rel="noopener" style="color:#5ab0e0" onclick="event.stopPropagation()">https://nicolaecatrina.com/en/ks-2026-replay/</a><br><br>If at any point you need assistance please contact us.<br>The recordings will be available untill Sunday at 22:00, Romanian time.<br>Please make sure you watch them until then.<br><br>We do not allow the audio or video recording of the content of this event.',
-    ksBuyReplay: 'If you attended the live retreat and wish to have access to the replay session as well, pay 100 lei.',
-    ksBuyReplayBtn: 'Get replay access — 100 lei',
-    rudraSection: 'Initiation in the mantra of Rudra-Shiva',
-    rudraEnrolled: 'Enrolled',
-    rudraTitle: 'The initiation in the mantra of Rudra-Shiva',
-    rudraDate: 'July 8, 2026',
-    rudraAt: 'at',
-    rudraDesc: 'will take place on <strong>July 8, 2026</strong>, at <strong>19:00</strong>, in Bucharest and Cluj (and also in August in Costinești).',
-    rudraChooseLocation: 'Cum te inscrii la initiere? Alege locatia:',
-    rudraThankYou: '✓ Thank you for subscribing!',
-    rudraBucharest: 'Bucharest',
-    rudraBucharestBtn: '📍 Bucharest',
-    rudraClujBtn: '📍 Cluj',
-    rudraDeadlinePassed: 'Registration closed on July 3, 2026.'
+    ksParticipated: function(hasLive, hasReplay) {
+      return 'Participated ' + this.ksTypeLabel(hasLive, hasReplay);
+    },
   },
   ro: {
     logout: 'Deconectare',
@@ -245,9 +229,6 @@ var T = {
     messagePlaceholder: 'Mesajul tău…',
     send: 'Trimite',
     close: '✕ Închide',
-    tgTitle: 'Canal Telegram — Kashmir Shaivism Retreat 2026',
-    tgDesc: 'anunturi și notificări.',
-    tgJoin: 'Alătură-te →',
     months: ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'],
     statusNotPaid: 'Neachitat',
     statusPaid: 'Achitat',
@@ -264,30 +245,12 @@ var T = {
     sending: 'Se trimite…',
     messageSent: 'Mesaj trimis!',
     failedToSend: 'Trimitere eșuată',
-    ksJoin: 'Vreau să mă înscriu!',
     ksTypeLabel: function(hasLive, hasReplay) {
       return (hasLive && hasReplay) ? 'live + replay' : (hasReplay ? 'replay' : 'live');
     },
-    ksThankYou: 'Vă mulțumim pentru înscrierea la tabăra de Șivaism Cașmirian din 2026!',
-    ksStarting: '🗓 Începând cu 25 iunie, 14:30 CEST',
-    ksReplayNote: '📼 <strong>Replay</strong>: acces la înregistrările taberei după finalizare.',
-    ksReplayWait: 'Vă mulțumim pentru înscrierea la sesiunea de recuperări pe baza înregistrărilor a taberei de Șivaism Cașmirian 2026.',
-    ksReplayStart: '🗓 Începând cu 3 iulie, 10:00 CEST (11:00 ora României)',
-    ksReplayUpload: 'Dragii noștri,<br><br>Vă mulțumim pentru că v-ați înscris la Tabăra Internaționalâ de Șivaism Cașmirian din 2026 pe baza înregistrărilor.<br><br>Mai jos regăsiți link-ul către pagina de site unde veți găsi link-urile necesare pentru a accesa înregistrările taberei: <a href="https://nicolaecatrina.com/en/ks-2026-replay/" target="_blank" rel="noopener" style="color:#5ab0e0" onclick="event.stopPropagation()">https://nicolaecatrina.com/en/ks-2026-replay/</a><br><br>Cei care doriți să beneficiați de traducere în limba română, vă rugăm să dați click pe iconița din dreapta jos, care seamănă cu o rotiță și să selectați din meniu opțiunea audio- română.<br><br>Vă rugăm să ne contactați dacă aveți nevoie de asistență!<br>Nu suntem de acord cu înregistrarea audio-video a acestui eveniment!',
-    ksBuyReplay: 'Dacă ai participat la tabăra live și dorești să ai acces și la sesiunea de reluare, achită 100 lei.',
-    ksBuyReplayBtn: 'Obține acces la reluare — 100 lei',
-    rudraSection: 'Inițiere în mantra lui Rudra-Shiva',
-    rudraEnrolled: 'Înscris',
-    rudraTitle: 'Inițierea în mantra lui Rudra-Șiva',
-    rudraDate: '8 iulie 2026',
-    rudraAt: 'ora',
-    rudraDesc: 'va fi oferită pe <strong>8 iulie 2026</strong>, de la <strong>19:00</strong>, în București și în Cluj (și de asemenea în august în Costinești).',
-    rudraChooseLocation: 'Cum te inscrii la initiere? Alege locatia:',
-    rudraThankYou: '✓ Vă mulțumim pentru înscriere!',
-    rudraBucharest: 'București',
-    rudraBucharestBtn: '📍 București',
-    rudraClujBtn: '📍 Cluj',
-    rudraDeadlinePassed: 'Înscrierea s-a închis pe 3 iulie 2026.'
+    ksParticipated: function(hasLive, hasReplay) {
+      return 'Ai participat ' + (this.ksTypeLabel(hasLive, hasReplay) === 'replay' ? 'prin reluare' : this.ksTypeLabel(hasLive, hasReplay));
+    },
   }
 };
 
@@ -305,9 +268,6 @@ function applyLang() {
   if ((el = document.getElementById('contactMessage')))  el.placeholder = tr.messagePlaceholder;
   if ((el = document.getElementById('contactSend')))     el.textContent = tr.send;
   if ((el = document.getElementById('popupCloseBtn')))   el.textContent = tr.close;
-  if ((el = document.getElementById('tgTitle')))         el.textContent = tr.tgTitle;
-  if ((el = document.getElementById('tgDesc')))          el.textContent = tr.tgDesc;
-  if ((el = document.getElementById('tgJoin')))          el.textContent = tr.tgJoin;
   var ro = document.getElementById('langRO'), en = document.getElementById('langEN');
   if (ro) { ro.classList.toggle('active', lang === 'ro'); }
   if (en) { en.classList.toggle('active', lang === 'en'); }
@@ -373,51 +333,16 @@ function showDashboard() {
   var isKsEnrolled = ksSessions.length > 0 && isKsPaid;
   var hasLive   = ksSessions.indexOf('live')   >= 0;
   var hasReplay = ksSessions.indexOf('replay') >= 0;
-  var rudraLoc  = ksData.rudra || '';
-  var ksTypeLabel = tr.ksTypeLabel(hasLive, hasReplay);
-  var ksCard = '<div class="sub-card">';
-  ksCard += '<div class="sub-header"' + (isKsEnrolled ? ' onclick="toggleSub(this)"' : '') + '>';
-  ksCard += '<div class="sub-title">';
+  var ksCard = '';
   if (isKsEnrolled) {
+    ksCard = '<div class="sub-card">';
+    ksCard += '<div class="sub-header">';
+    ksCard += '<div class="sub-title">';
     ksCard += '<span class="sub-badge" style="background:#0d2040;border-color:#2a6a9a;color:#5ab0e0">KS2026</span>';
-    ksCard += '<span class="sub-label">Kashmir Shaivism Retreat - ' + ksTypeLabel + '</span>';
-  } else {
-    ksCard += '<span class="sub-badge" style="background:#1e1e1e;border-color:#333;color:#555">KS2026</span>';
-    ksCard += '<span class="sub-label" style="color:#666">Kashmir Shaivism Retreat - live/replay</span>';
-  }
-  ksCard += '</div><div style="display:flex;align-items:center;gap:10px">';
-  if (isKsEnrolled) {
-    if (hasLive)   ksCard += '<span class="sub-status" style="background:#1e3a1e;color:#7ec850;border:1px solid #3a7a3a">Live</span>';
-    if (hasReplay) ksCard += '<span class="sub-status" style="background:#1e2040;color:#5ab0e0;border:1px solid #2a6a9a">Replay</span>';
-    ksCard += '<span class="chevron">▶</span>';
-  } else {
-    ksCard += '<a href="https://nicolaecatrina.com/kashmir-shaivism-retreat-2026/" target="_blank" class="ks-join-link" onclick="event.stopPropagation()">' + tr.ksJoin + '</a>';
-  }
-  ksCard += '</div></div>';
-  if (isKsEnrolled) {
-    ksCard += '<div class="sub-body">';
-    if (hasLive) ksCard += '<div style="font-size:13px;color:#7ec850;padding:8px 0">' + tr.ksThankYou + '<br><span style="color:#7ec850;font-size:12px">' + tr.ksStarting + '</span></div>';
-    if (hasLive && !hasReplay) ksCard += '<div style="margin:6px 0 12px;padding:10px 12px;background:#15151f;border:1px solid #2a6a9a;border-radius:8px"><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:8px">' + tr.ksBuyReplay + '</div><a href="https://nicolaecatrina.com/en/confirmare-comanda/?buy-now=48357" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-block;background:#1a2a3a;color:#5ab0e0;border:1px solid #2a6a9a;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;text-decoration:none">' + tr.ksBuyReplayBtn + '</a></div>';
-    if (hasReplay) ksCard += '<div style="font-size:13px;color:#7ec850;margin-bottom:4px">✓ ' + tr.ksReplayWait + '</div><div style="font-size:13px;color:#fff;font-weight:700;margin-bottom:4px">' + tr.ksReplayStart + '</div><div style="font-size:12px;color:#aaa;line-height:1.6;margin-bottom:6px">' + tr.ksReplayUpload + '</div>';
-    ksCard += '<div style="margin-top:14px;padding-top:12px;border-top:1px solid #2a2a2a">';
-    ksCard += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    ksCard += '<span style="background:#1a0a2e;border:1px solid #6a3a9a;color:#c07ae0;border-radius:6px;padding:2px 10px;font-size:12px;font-weight:700">Rudra-Shiva</span>';
-    ksCard += '<span style="font-size:13px;color:#c07ae0;font-weight:600">' + tr.rudraSection + '</span>';
-    if (rudraLoc) ksCard += '<span style="background:#2a1040;color:#c07ae0;border:1px solid #7a3aaa;border-radius:6px;padding:2px 8px;font-size:11px">' + tr.rudraEnrolled + '</span>';
-    ksCard += '</div>';
-    ksCard += '<div id="rudraBody">';
-    if (rudraLoc) {
-      var locDisplay = lang === 'ro'
-        ? (rudraLoc === 'Cluj' ? 'Cluj' : rudraLoc === 'Costinesti' ? 'Costinești' : 'București')
-        : (rudraLoc === 'Cluj' ? 'Cluj' : rudraLoc === 'Costinesti' ? 'Costinești' : 'Bucharest');
-      ksCard += rudraConfirmHTML(locDisplay);
-    } else {
-      ksCard += rudraFormHTML();
-    }
-    ksCard += '</div></div>';
+    ksCard += '<span class="sub-label">' + tr.ksParticipated(hasLive, hasReplay) + '</span>';
+    ksCard += '</div><div style="display:flex;align-items:center;gap:10px"></div></div>';
     ksCard += '</div>';
   }
-  ksCard += '</div>';
   var html = ksCard;
   var hasCourseSubs = false;
   courses.forEach(function(c) {
@@ -486,11 +411,18 @@ function showDashboard() {
 
     if (isPaid || isPrivate) {
       if (courseSessions.length > 0) {
-        html += '<div class="session-list">';
-        courseSessions.forEach(function(s) {
-          html += '<span class="session-chip" data-cid="' + esc(c.id) + '" data-sess="' + esc(s.session) + '" data-url="' + esc(s.link) + '" onclick="playSession(this)">' + esc(s.session) + '</span>';
+        var textSessions = courseSessions.filter(function(s){ return !s.link || s.link === '#'; });
+        var linkSessions  = courseSessions.filter(function(s){ return s.link && s.link !== '#'; });
+        textSessions.forEach(function(s) {
+          html += '<div class="session-note">' + esc(s.session) + '</div>';
         });
-        html += '</div>';
+        if (linkSessions.length > 0) {
+          html += '<div class="session-list">';
+          linkSessions.forEach(function(s) {
+            html += '<span class="session-chip" data-cid="' + esc(c.id) + '" data-sess="' + esc(s.session) + '" data-url="' + esc(s.link) + '" onclick="playSession(this)">' + esc(s.session) + '</span>';
+          });
+          html += '</div>';
+        }
         html += '<div class="player-box" id="pb_' + c.id.replace(/[^a-zA-Z0-9]/g,'_') + '"></div>';
       } else if (isPaid) {
         html += '<div class="no-sessions">' + tr.noSessions + '</div>';
@@ -502,6 +434,32 @@ function showDashboard() {
   });
 
   if (!hasCourseSubs) html += '<div class="no-sessions" style="text-align:center;padding:30px">' + tr.noSubs + '</div>';
+  document.getElementById('subsList').innerHTML = html;
+}
+
+function showGuestDashboard(key) {
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('contactBar').style.display = 'block';
+  document.querySelector('.nav-bar').style.display = 'none';
+  applyLang();
+  document.getElementById('dashName').textContent = 'Guest';
+  document.getElementById('dashEmail').textContent = '';
+  var wf = GUEST_WORKSHOPS[key];
+  if (!wf) {
+    document.getElementById('subsList').innerHTML = '<div class="no-sessions" style="text-align:center;padding:30px">Not found</div>';
+    return;
+  }
+  var html = '<div class="sub-card"><div class="sub-header"><div class="sub-title">';
+  html += '<span class="sub-badge">' + esc(wf.label) + '</span></div></div>';
+  html += '<div class="sub-body open">';
+  html += '<div class="session-list">';
+  wf.videos.forEach(function(v) {
+    html += '<span class="session-chip" data-cid="' + esc(key) + '" data-sess="' + esc(v.session) + '" data-url="' + esc('https://vimeo.com/' + v.id) + '" onclick="playSession(this)">' + esc(v.session) + '</span>';
+  });
+  html += '</div>';
+  html += '<div class="player-box" id="pb_' + safeId(key) + '"></div>';
+  html += '</div></div>';
   document.getElementById('subsList').innerHTML = html;
 }
 
@@ -531,63 +489,6 @@ function statusLabel(s) {
   return {P: tr.statusPaid, F: tr.statusFull, G: tr.statusPaid, S: tr.statusStopped}[letter] || s;
 }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-function rudraConfirmHTML(locDisplay) {
-  var tr = t();
-  var addrMap = {Cluj:'Bâlea nr.9K', 'București':'Alecu Russo nr.9', 'Bucharest':'Alecu Russo nr.9'};
-  var addr = addrMap[locDisplay] || '';
-  var isCostinesti = locDisplay.indexOf('Costine') === 0;
-  var titleLine = isCostinesti ? '' : '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>';
-  var dateLine = isCostinesti
-    ? '📅 <strong>August, ' + locDisplay + '</strong>'
-    : '📅 <strong>' + tr.rudraDate + '</strong>, ' + tr.rudraAt + ' <strong>19:00</strong> &nbsp;·&nbsp; <strong>' + locDisplay + '</strong>';
-  return '<div style="color:#7ec850;font-size:13px;margin-bottom:10px">' + tr.rudraThankYou + '</div>' +
-    '<div style="font-size:13px;color:#ccc;line-height:1.7;margin-bottom:6px">' +
-    titleLine +
-    dateLine +
-    (addr ? '<br><span style="font-size:12px;color:#a07ae0">📍 ' + addr + '</span>' : '') +
-    '</div>';
-}
-function rudraFormHTML() {
-  var tr = t();
-  var base = '<div style="font-size:13px;color:#ccc;line-height:1.6;margin-bottom:12px">' +
-    '<strong style="color:#c07ae0">' + tr.rudraTitle + '</strong><br>' +
-    '<span style="color:#ccc">' + tr.rudraDesc + '</span>' +
-    '</div>';
-  var deadline = new Date('2026-07-04T00:00:00');
-  if (new Date() >= deadline) {
-    return base + '<div style="font-size:13px;color:#aaa;font-style:italic">' + tr.rudraDeadlinePassed + '</div>';
-  }
-  return base +
-    '<div style="font-size:12px;color:#aaa;margin-bottom:10px">' + tr.rudraChooseLocation + '</div>' +
-    '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-    '<button onclick="rudraSubscribe(\'Bucuresti\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">' + tr.rudraBucharestBtn + '</button>' +
-    '<button onclick="rudraSubscribe(\'Cluj\')" style="background:#1a0a2e;color:#c07ae0;border:1px solid #6a3a9a;border-radius:8px;padding:9px 22px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600">' + tr.rudraClujBtn + '</button>' +
-    '</div>';
-}
-async function rudraSubscribe(loc) {
-  var f = student && student.fields || {};
-  var email = (f.email || '').toLowerCase();
-  var btns = document.querySelectorAll('#rudraBody button');
-  btns.forEach(function(b){ b.disabled = true; b.style.opacity = '.5'; });
-  try {
-    var res = await fetch(PROXY + '?action=rudra_set_location', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: email, location: loc})
-    }).then(function(r){ return r.json(); });
-    if (res.ok) {
-      var locDisplay = lang === 'ro'
-        ? (loc === 'Cluj' ? 'Cluj' : 'București')
-        : (loc === 'Cluj' ? 'Cluj' : 'Bucharest');
-      var body = document.getElementById('rudraBody');
-      if (body) body.innerHTML = rudraConfirmHTML(locDisplay);
-    } else {
-      btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
-    }
-  } catch(e) {
-    btns.forEach(function(b){ b.disabled = false; b.style.opacity = ''; });
-  }
-}
 
 function safeId(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }
 
@@ -679,6 +580,8 @@ async function sendContactEmail() {
 
 (function(){
   applyLang();
+  var guestKey = new URLSearchParams(location.search).get('guest');
+  if (guestKey) { showGuestDashboard(guestKey); return; }
   try {
     var cached = sessionStorage.getItem('student');
     if (!cached) { window.location.href = BASE + 'login.html'; return; }

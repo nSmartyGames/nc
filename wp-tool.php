@@ -115,6 +115,31 @@ case 'update_post': {
     wpt_out(wpt_post_payload(get_post($id)));
 }
 
+case 'get_revisions': {
+    $id = (int)($_GET['id'] ?? 0);
+    if (!$id || !get_post($id)) wpt_err('not found', 404);
+    $revs = wp_get_post_revisions($id, array('numberposts' => 50));
+    $out = array();
+    foreach ($revs as $r) {
+        $out[] = array(
+            'id'       => $r->ID,
+            'date'     => $r->post_date,
+            'author'   => get_the_author_meta('user_login', $r->post_author),
+            'title'    => $r->post_title,
+            'len'      => strlen($r->post_content),
+            'has_ro'   => strpos($r->post_content, '[:ro]') !== false,
+        );
+    }
+    wpt_out(array('revisions' => $out));
+}
+
+case 'get_revision': {
+    $id = (int)($_GET['id'] ?? 0);
+    $r = $id ? get_post($id) : null;
+    if (!$r || $r->post_type !== 'revision') wpt_err('not found', 404);
+    wpt_out(wpt_post_payload($r));
+}
+
 case 'purge_cache': {
     $done = array();
     if (class_exists('WPO_Page_Cache') && !empty($_GET['url'])) {

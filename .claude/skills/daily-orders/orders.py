@@ -20,7 +20,8 @@ PROXY = "https://nicolaecatrina.com/app/airtable-proxy.php"
 def call(action, payload, method="POST"):
     data = json.dumps(payload).encode() if payload is not None else None
     req = urllib.request.Request(PROXY + "?action=" + action, data=data,
-                                 headers={"Content-Type": "application/json"})
+                                 headers={"Content-Type": "application/json",
+                                          "User-Agent": "Mozilla/5.0"})
     return json.loads(urllib.request.urlopen(req, timeout=60).read())
 
 def _load(arg):
