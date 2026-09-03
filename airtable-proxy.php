@@ -110,7 +110,8 @@ function ncParseEmail($subj, $body, $from_name, $from_email, $reply_to, $cat) {
     // Course
     if      (preg_match('/ytt.?m1|ttc1|modul\s*1/', strtolower($src))) $p['course'] = 'YTT-M1';
     elseif  (preg_match('/ytt.?m2|ttc2|modul\s*2/', strtolower($src))) $p['course'] = 'YTT-M2';
-    elseif  (preg_match('/ytt.?m3|ttc3|modul\s*3|tibetan/', strtolower($src))) $p['course'] = 'YTT-M3';
+    elseif  (preg_match('/tibetan\s*tantric|\btty.?m3\b/', strtolower($src))) $p['course'] = 'TTY-M3';
+    elseif  (preg_match('/ytt.?m3|ttc3|modul\s*3/', strtolower($src))) $p['course'] = 'YTT-M3';
     elseif  (preg_match('/i.?ching/', strtolower($src))) $p['course'] = 'I Ching';
     elseif  (preg_match('/alchimie|\bal\b/', strtolower($src))) $p['course'] = 'AL';
     // Group (from nota first, then body)
@@ -208,6 +209,7 @@ function ncParseOrder($subj, $body) {
     elseif  (preg_match('/kashmir|ks\s*26|replay session for live subscription|sesiune de revizionare pentru cei care au participat live/', $hay))
                                                                           $o['course'] = 'KS26';
     elseif  (preg_match('/alchim/', $hay))                               $o['course'] = 'AL';
+    elseif  (preg_match('/tibetan\s*tantric|\btty.?m3\b/', $hay))        $o['course'] = 'TTY-M3';
     elseif  (preg_match('/m3|modul(?:ul)? 3|module 3/', $hay))           $o['course'] = 'YTT-M3';
     elseif  (preg_match('/m2|modul(?:ul)? 2|module 2/', $hay))           $o['course'] = 'YTT-M2';
     elseif  (preg_match('/m1|modul(?:ul)? 1|module 1/', $hay))           $o['course'] = 'YTT-M1';
@@ -292,7 +294,8 @@ function ncMakeDraft($cat, $from_name, $reply_to, $subject, $body_text) {
             $c = '';
             if (preg_match('/ytt.?m1|ttc1|modul\s*1/', $t)) $c = 'YTT-M1';
             elseif (preg_match('/ytt.?m2|ttc2|modul\s*2/', $t)) $c = 'YTT-M2';
-            elseif (preg_match('/ytt.?m3|ttc3|modul\s*3|tibetan/', $t)) $c = 'YTT-M3';
+            elseif (preg_match('/tibetan\s*tantric|\btty.?m3\b/', $t)) $c = 'TTY-M3';
+            elseif (preg_match('/ytt.?m3|ttc3|modul\s*3/', $t)) $c = 'YTT-M3';
             elseif (preg_match('/i.?ching|ching/', $t)) $c = 'I Ching';
             elseif (preg_match('/alchimie|\bal\b/', $t)) $c = 'AL';
             return "$hi\n\nMulțumim! Am înregistrat plata" . ($c ? " la $c" : '') . ".\n\n$sign";
@@ -1216,7 +1219,7 @@ switch ($action) {
             $subj = ncDecodeHeader($hdr->subject ?? '(no subject)');
             $dstr = date('d M Y, H:i', strtotime($hdr->date ?? 'now'));
             $struct = imap_fetchstructure($mbox, $num);
-            $btxt = mb_substr(trim(ncGetBody($mbox, $num, $struct)), 0, 800);
+            $btxt = mb_substr(trim(ncGetBody($mbox, $num, $struct)), 0, 4000);
             $results[] = ['num' => $num, 'from_name' => $fn, 'from_email' => $fe,
                           'reply_to' => $re, 'subject' => $subj, 'date' => $dstr, 'body' => $btxt,
                           'seen' => !empty($ov[0]->seen), 'flagged' => !empty($ov[0]->flagged)];

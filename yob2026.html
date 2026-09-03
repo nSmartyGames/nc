@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YOB 2026</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080f1a;color:#c0d8ec;font-family:system-ui,-apple-system,sans-serif;padding:14px;font-size:14px}
+.nav-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.nav-title{font-size:17px;font-weight:700;color:#5ab0e0;margin-right:auto;letter-spacing:.02em}
+.nav-sub{font-size:12px;color:#2a5a7a;margin-left:2px}
+.btn{background:#0d1e30;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit}
+.btn:hover{border-color:#5ab0e0;background:#0d2a40}
+.tab-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tab{background:#0d1e30;color:#5ab0e0;border:1px solid #1e4a6a;border-radius:6px;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.tab.on{background:#0a3a5a;border-color:#5ab0e0;color:#d0ecff}
+.stat-line{font-size:13px;color:#3a6a8a}
+.stat-line b{color:#5ab0e0}
+.search-row{display:flex;gap:8px;margin-bottom:10px}
+.si{flex:1;background:#080f1a;color:#c0d8ec;border:1px solid #1e4a6a;border-radius:4px;padding:5px 10px;font-size:13px;outline:none;font-family:inherit;min-width:100px}
+.si:focus{border-color:#5ab0e0}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#0a2a42}
+th{color:#5ab0e0;padding:8px 10px;text-align:left;font-size:12px;font-weight:600;white-space:nowrap;border-bottom:1px solid #1e4a6a}
+td{padding:7px 10px;border-bottom:1px solid #0d1e30;vertical-align:middle}
+tbody tr:hover td{background:#0d1e30}
+.tx{display:inline-block;padding:2px 9px;border-radius:4px;font-size:12px;font-weight:700}
+.tx-eeb{background:#0f2a1a;color:#5ec87a}
+.tx-eb{background:#1a2a0f;color:#a0c850}
+.tx-regular{background:#1a2030;color:#60a0d0}
+.tx-G{background:#1a1230;color:#a07ed0}
+.tx-P{background:#2a1e00;color:#e0a040}
+.tx-e{color:#333;font-size:12px}
+.note-cell{color:#4a7a8a;font-size:12px}
+.xfer-btn{background:none;border:none;color:#5ab0e0;opacity:.45;font-size:12px;cursor:pointer;padding:0 2px;font-family:inherit}
+.xfer-btn:hover{opacity:1}
+.num{color:#1a4a6a;font-size:12px;text-align:right;width:34px}
+#sy{height:20px;color:#5ab0e0;font-size:13px;margin-bottom:8px}
+.add-section{margin-bottom:10px;border-bottom:1px solid #1e4a6a;padding-bottom:10px;display:none}
+.add-section.open{display:block}
+td[data-field]{cursor:pointer}
+td[data-field]:hover{background:#0d2a40}
+.add-section h3{color:#5ab0e0;font-size:13px;font-weight:600;margin-bottom:8px}
+.add-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.add-row input,.add-row select{background:#080f1a;color:#c0d8ec;border:1px solid #1e4a6a;border-radius:4px;padding:5px 9px;font-size:13px;outline:none;font-family:inherit}
+.add-row input:focus,.add-row select:focus{border-color:#5ab0e0}
+select option{background:#0d1e30}
+</style>
+</head>
+<body>
+
+<div class="nav-bar">
+  <span class="nav-title">🧘 YOB 2026</span>
+  <button class="btn" onclick="location.href='yoga.html'">← Admin</button>
+</div>
+
+<div id="sy"></div>
+
+<div class="tab-bar">
+  <button class="tab on" id="tabI" onclick="setTab('inperson')">In-person <span id="cntI"></span></button>
+  <button class="tab" id="tabL" onclick="setTab('live')">Online live <span id="cntL"></span></button>
+  <button class="tab" id="tabR" onclick="setTab('replay')">Replay <span id="cntR"></span></button>
+  <span class="stat-line" id="statLine"></span>
+  <button class="btn" onclick="copyPaid()" style="margin-left:auto">Copy paid emails</button>
+</div>
+
+<div class="add-section" id="addSection">
+  <h3>Add subscriber</h3>
+  <div class="add-row">
+    <input id="aN" placeholder="Name" style="width:180px">
+    <input id="aE" placeholder="Email" style="width:200px">
+    <select id="aT">
+      <option value="eeb">Early early bird — €120</option>
+      <option value="eb">Early bird — €160</option>
+      <option value="regular">Regular — €200</option>
+      <option value="G">G (gratis)</option>
+      <option value="pending">pending</option>
+      <option value="">— unpaid</option>
+    </select>
+    <select id="aS">
+      <option value="inperson">in-person</option>
+      <option value="live">online live</option>
+      <option value="replay">replay</option>
+    </select>
+    <input id="aNote" placeholder="Notes" style="width:160px">
+    <button class="btn" onclick="addRow()">Save</button>
+  </div>
+</div>
+
+<button class="btn" onclick="toggleAdd()" id="btnAdd" style="margin-bottom:10px">+ Add subscriber</button>
+
+<div class="search-row">
+  <input class="si" id="sN" placeholder="Name…" oninput="render()">
+  <input class="si" id="sE" placeholder="Email…" oninput="render()">
+</div>
+
+<table id="mainTable">
+  <thead>
+    <tr>
+      <th style="width:36px"></th>
+      <th class="num">#</th>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Tax</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody id="tbody"></tbody>
+</table>
+
+
+<script>
+var PROXY = /^\/app(\/|$)/.test(location.pathname)
+  ? location.origin + '/app/airtable-proxy.php'
+  : location.origin + '/airtable-proxy.php';
+
+if (!sessionStorage.getItem('adminAuth')) {
+  window.location.href = /^\/app(\/|$)/.test(location.pathname) ? '/app/' : '/';
+}
+
+var data = [], tab = 'inperson';
+
+function sy(m) { document.getElementById('sy').textContent = m; }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function txBadge(t) {
+  t = (t||'').trim();
+  if (t === 'eeb')                       return '<span class="tx tx-eeb">EEB €120</span>';
+  if (t === 'eb')                        return '<span class="tx tx-eb">EB €160</span>';
+  if (t === 'regular')                   return '<span class="tx tx-regular">Regular €200</span>';
+  if (t === 'G')                         return '<span class="tx tx-G">G</span>';
+  if (t.toLowerCase() === 'pending')     return '<span class="tx tx-P">pending</span>';
+  if (!t)                                return '<span class="tx-e">—</span>';
+  return '<span class="tx tx-P">' + esc(t) + '</span>';
+}
+
+function isPaid(t) { t=(t||'').trim(); return t==='eeb'||t==='eb'||t==='regular'||t==='G'||t==='pending'; }
+
+function setTab(t) {
+  tab = t;
+  document.getElementById('tabI').className = 'tab' + (t==='inperson' ? ' on' : '');
+  document.getElementById('tabL').className = 'tab' + (t==='live'     ? ' on' : '');
+  document.getElementById('tabR').className = 'tab' + (t==='replay'   ? ' on' : '');
+  render();
+}
+
+function render() {
+  var sn = document.getElementById('sN').value.trim().toLowerCase();
+  var se = document.getElementById('sE').value.trim().toLowerCase();
+  var cur = data.filter(function(r){ return r.session === tab; });
+  var vis = cur.filter(function(r){
+    if (sn && r.name.toLowerCase().indexOf(sn)  < 0) return false;
+    if (se && r.email.toLowerCase().indexOf(se) < 0) return false;
+    return true;
+  });
+  var ic = data.filter(function(r){ return r.session==='inperson'; }).length;
+  var lc = data.filter(function(r){ return r.session==='live';     }).length;
+  var rc = data.filter(function(r){ return r.session==='replay';   }).length;
+  document.getElementById('cntI').textContent = ic ? '('+ic+')' : '';
+  document.getElementById('cntL').textContent = lc ? '('+lc+')' : '';
+  document.getElementById('cntR').textContent = rc ? '('+rc+')' : '';
+
+  var paid = cur.filter(function(r){ return isPaid(r.tax); }).length;
+  var pend = cur.filter(function(r){ return (r.tax||'').trim().toLowerCase()==='pending'; }).length;
+  var unp  = cur.filter(function(r){ return !(r.tax||'').trim(); }).length;
+  var sl   = 'Total: <b>'+cur.length+'</b> &nbsp; Paid/Gratis: <b>'+paid+'</b>';
+  if (pend) sl += ' &nbsp; Pending: <b>'+pend+'</b>';
+  if (unp)  sl += ' &nbsp; Unpaid: <b>'+unp+'</b>';
+  document.getElementById('statLine').innerHTML = sl;
+
+  var html = '';
+  vis.forEach(function(r, i) {
+    var idx = data.indexOf(r);
+    html += '<tr data-idx="'+idx+'"><td style="text-align:center;padding:4px"><button onclick="deleteRow('+idx+',event)" style="background:none;border:none;color:#4a2a2a;font-size:15px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1" onmouseover="this.style.color=\'#e05050\'" onmouseout="this.style.color=\'#4a2a2a\'">✕</button></td><td class="num">'+(i+1)+'</td>'
+          + '<td data-field="name">'+esc(r.name)+'</td>'
+          + '<td data-field="email" style="opacity:.8;font-size:13px">'+esc(r.email)+' <button class="xfer-btn" onclick="event.stopPropagation();transferMenuBtn(this)" title="Move/copy session">⇄</button></td>'
+          + '<td data-field="tax">'+txBadge(r.tax)+'</td>'
+          + '<td data-field="notes" class="note-cell">'+esc(r.notes)+'</td></tr>';
+  });
+  document.getElementById('tbody').innerHTML = html ||
+    '<tr><td colspan="6" style="text-align:center;padding:20px;color:#1a4a6a">No results</td></tr>';
+}
+
+function copyPaid() {
+  var emails = data
+    .filter(function(r){ return r.session===tab && isPaid(r.tax); })
+    .map(function(r){ return r.email.trim(); })
+    .filter(Boolean).join(';');
+  if (!emails) { sy('No paid emails for this session'); return; }
+  navigator.clipboard.writeText(emails).then(function(){
+    sy('Copied ' + emails.split(';').length + ' emails');
+    setTimeout(function(){ sy(''); }, 3000);
+  });
+}
+
+function toggleAdd() {
+  var open = document.getElementById('addSection').classList.toggle('open');
+  document.getElementById('btnAdd').textContent = open ? '✕ Cancel' : '+ Add subscriber';
+}
+
+async function addRow() {
+  var name    = document.getElementById('aN').value.trim();
+  var email   = document.getElementById('aE').value.trim();
+  var tax     = document.getElementById('aT').value;
+  var session = document.getElementById('aS').value;
+  var notes   = document.getElementById('aNote').value.trim();
+  if (!name && !email) { sy('Name or email required'); return; }
+  try {
+    var res = await fetch(PROXY+'?action=yob26_append', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name,email,tax,session,notes})
+    });
+    var j = await res.json();
+    if (j.error) { sy('Error: '+j.error); return; }
+    data.push({name,email,tax,session,notes});
+    document.getElementById('aN').value = '';
+    document.getElementById('aE').value = '';
+    document.getElementById('aNote').value = '';
+    document.getElementById('addSection').classList.remove('open');
+    document.getElementById('btnAdd').textContent = '+ Add subscriber';
+    document.getElementById('sN').value = '';
+    document.getElementById('sE').value = email || name;
+    setTab(session);
+    sy('Added: '+name);
+    setTimeout(function(){ sy(''); }, 3000);
+  } catch(e) { sy('Error: '+e.message); }
+}
+
+async function load() {
+  sy('Loading…');
+  try {
+    var res = await fetch(PROXY+'?action=yob26_read');
+    var j   = await res.json();
+    if (j.error) { sy('Error: '+j.error); return; }
+    data = j.rows || [];
+    sy('');
+    render();
+  } catch(e) { sy('Load failed: '+e.message); }
+}
+
+var TAX_OPTS = ['eeb','eb','regular','G','G-Evi','pending',''];
+
+function makeEditable(td, r, field) {
+  if (td.querySelector('input,select')) return;
+  var origEmail = r.email;
+  var oldVal = r[field];
+  var el;
+  if (field === 'tax') {
+    el = document.createElement('select');
+    TAX_OPTS.forEach(function(v) {
+      var o = document.createElement('option');
+      o.value = v;
+      o.textContent = v || '— unpaid';
+      if (v === oldVal) o.selected = true;
+      el.appendChild(o);
+    });
+  } else {
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = oldVal;
+    el.style.width = field === 'notes' ? '200px' : field === 'email' ? '180px' : '140px';
+  }
+  el.style.cssText += ';background:#080f1a;color:#c0d8ec;border:1px solid #5ab0e0;border-radius:3px;padding:2px 6px;font-size:13px;font-family:inherit';
+  td.innerHTML = '';
+  td.appendChild(el);
+  el.focus();
+  if (el.select) el.select();
+
+  function save() {
+    var newVal = el.value;
+    if (newVal === oldVal) { render(); return; }
+    r[field] = newVal;
+    render();
+    fetch(PROXY + '?action=yob26_edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orig_email: origEmail, orig_session: r.session,
+        name: r.name, email: r.email, tax: r.tax,
+        session: r.session, notes: r.notes
+      })
+    }).then(function(res){ return res.json(); }).then(function(j){
+      if (j.error) { sy('Save error: ' + j.error); r[field] = oldVal; render(); }
+    }).catch(function(e){ sy('Save error: '+e.message); r[field] = oldVal; render(); });
+  }
+
+  el.addEventListener('blur', save);
+  el.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') { el.blur(); }
+    if (e.key === 'Escape') { r[field] = oldVal; render(); }
+  });
+}
+
+var SESSION_LABELS = {inperson:'In-person', live:'Online live', replay:'Replay'};
+
+function transferMenu(td, r) {
+  if (td.querySelector('select')) return;
+  var oldSession = r.session;
+  var el = document.createElement('select');
+  ['inperson','live','replay'].forEach(function(v) {
+    var o = document.createElement('option');
+    o.value = v;
+    o.textContent = SESSION_LABELS[v];
+    if (v === oldSession) o.selected = true;
+    el.appendChild(o);
+  });
+  el.style.cssText = 'background:#080f1a;color:#c0d8ec;border:1px solid #5ab0e0;border-radius:3px;padding:2px 6px;font-size:13px;font-family:inherit';
+  td.innerHTML = '';
+  td.appendChild(el);
+  el.focus();
+
+  function commit() {
+    var newSession = el.value;
+    if (newSession === oldSession) { render(); return; }
+    r.session = newSession;
+    fetch(PROXY + '?action=yob26_edit', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        orig_email: r.email, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
+        session: r.session, notes: r.notes
+      })
+    }).then(function(res){ return res.json(); }).then(function(j){
+      if (j.error) { sy('Save error: ' + j.error); r.session = oldSession; render(); return; }
+      sy('Moved ' + (r.name || r.email) + ' to ' + SESSION_LABELS[newSession]);
+      setTimeout(function(){ sy(''); }, 3000);
+      render();
+    }).catch(function(e){ sy('Save error: '+e.message); r.session = oldSession; render(); });
+  }
+
+  el.addEventListener('change', commit);
+  el.addEventListener('blur', function(){ render(); });
+  el.addEventListener('keydown', function(e){ if (e.key === 'Escape') render(); });
+}
+
+function transferMenuBtn(btn) {
+  var td = btn.closest('td[data-field]');
+  var tr = td.closest('tr[data-idx]');
+  if (!tr) return;
+  var r = data[parseInt(tr.getAttribute('data-idx'))];
+  if (r) transferMenu(td, r);
+}
+
+document.getElementById('tbody').addEventListener('click', function(e) {
+  var td = e.target.closest('td[data-field]');
+  if (!td) return;
+  var tr = td.closest('tr[data-idx]');
+  if (!tr) return;
+  var r = data[parseInt(tr.getAttribute('data-idx'))];
+  if (!r) return;
+  var field = td.getAttribute('data-field');
+  makeEditable(td, r, field);
+});
+
+
+async function deleteRow(idx, e) {
+  e.stopPropagation();
+  var r = data[idx];
+  if (!r) return;
+  if (!confirm('Delete ' + (r.name || r.email) + '?')) return;
+  try {
+    var res = await fetch(PROXY+'?action=yob26_delete', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email: r.email, session: r.session})
+    });
+    var j = await res.json();
+    if (j.error) { sy('Error: '+j.error); return; }
+    data.splice(idx, 1);
+    render();
+    sy('Deleted: '+(r.name||r.email));
+    setTimeout(function(){ sy(''); }, 3000);
+  } catch(e) { sy('Error: '+e.message); }
+}
+
+load();
+</script>
+</body>
+</html>

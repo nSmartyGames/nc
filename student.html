@@ -217,6 +217,7 @@ var T = {
     ksParticipated: function(hasLive, hasReplay) {
       return 'Participated ' + this.ksTypeLabel(hasLive, hasReplay);
     },
+    ytt3g1Notice: 'Dear students, you will receive the next two courses (107, 108) as soon as they are ready for viewing. Thank you for your understanding!',
   },
   ro: {
     logout: 'Deconectare',
@@ -251,6 +252,7 @@ var T = {
     ksParticipated: function(hasLive, hasReplay) {
       return 'Ai participat ' + (this.ksTypeLabel(hasLive, hasReplay) === 'replay' ? 'prin reluare' : this.ksTypeLabel(hasLive, hasReplay));
     },
+    ytt3g1Notice: 'Dragi studenți, următoarele două cursuri (107, 108) le veți primi imediat ce vor fi pregătite pentru vizionare. Vă mulțumim pentru înțelegere!',
   }
 };
 
@@ -396,6 +398,12 @@ function showDashboard() {
     html += '</div>';
     html += '</div>';
     html += '<div class="sub-body">';
+    if (c.id === 'TTY-M3') {
+      html += '<div class="session-note" style="background:#2a2410;border:1px solid #6a5a1a;color:#e0c060;padding:10px;border-radius:6px;margin-bottom:10px">Dear students, due to the Costinești holiday, editing this month’s course materials is taking a bit longer than usual, so they will be available on the platform in a few days. Thank you for your understanding!</div>';
+    }
+    if (c.id === 'YTT-M3' && String(sub.G) === '1') {
+      html += '<div class="session-note" style="background:#2a2410;border:1px solid #6a5a1a;color:#e0c060;padding:10px;border-radius:6px;margin-bottom:10px">' + tr.ytt3g1Notice + '</div>';
+    }
     var payUrl = COURSE_PAY_URLS[c.id];
     var nextPart;
     if (currStatus === 'F') {
