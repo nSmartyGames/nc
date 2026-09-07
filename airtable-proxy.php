@@ -1562,21 +1562,27 @@ switch ($action) {
 
     case 'yob26_delete':
         $de = strtolower(str_replace(["\n","\r"], '', trim($body['email'] ?? '')));
+        $dn = strtolower(str_replace(["\n","\r"], '', trim($body['name'] ?? '')));
         $dse = strtolower(str_replace(["\n","\r"], '', trim($body['session'] ?? '')));
-        if (!$de) { echo json_encode(['error' => 'email required']); break; }
+        if (!$de && !$dn) { echo json_encode(['error' => 'email or name required']); break; }
         $df = __DIR__ . '/yob26.csv';
         if (!file_exists($df)) { echo json_encode(['error' => 'File not found']); break; }
         $drows = []; $dfound = false; $ddeleted = false;
         if (($dfh = fopen($df,'r')) !== false) { fgetcsv($dfh); while (($dr=fgetcsv($dfh))!==false) $drows[]=$dr; fclose($dfh); }
-        $drows = array_filter($drows, function($r) use ($de, $dse, &$dfound, &$ddeleted) {
-            if (strtolower(trim($r[1]??'')) !== $de) return true;
+        $drows = array_filter($drows, function($r) use ($de, $dn, $dse, &$dfound, &$ddeleted) {
+            if ($de) {
+                if (strtolower(trim($r[1]??'')) !== $de) return true;
+            } else {
+                if (strtolower(trim($r[1]??'')) !== '') return true;
+                if (strtolower(trim($r[0]??'')) !== $dn) return true;
+            }
             $dfound = true;
             if ($dse !== '' && strtolower(trim($r[3]??'')) !== $dse) return true;
             $ddeleted = true;
             return false;
         });
         if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
-        if (!$ddeleted) { echo json_encode(['error' => 'No row matching that email + session']); break; }
+        if (!$ddeleted) { echo json_encode(['error' => 'No row matching that key + session']); break; }
         $dfh = fopen($df,'w'); fputcsv($dfh,['name','email','tax','session','notes']);
         foreach($drows as $dr) fputcsv($dfh,$dr); fclose($dfh);
         echo json_encode(['ok' => true]);

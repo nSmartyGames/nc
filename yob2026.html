@@ -360,7 +360,7 @@ async function deleteRow(idx, e) {
   try {
     var res = await fetch(PROXY+'?action=yob26_delete', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: r.email, session: r.session})
+      body: JSON.stringify({email: r.email, name: r.name, session: r.session})
     });
     var j = await res.json();
     if (j.error) { sy('Error: '+j.error); return; }
