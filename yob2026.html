@@ -241,7 +241,7 @@ async function load() {
 
 var TAX_OPTS = ['eeb','eb','regular','G','G-Evi','pending',''];
 
-function makeEditable(td, r, field) {
+function makeEditable(td, r, field, idx) {
   if (td.querySelector('input,select')) return;
   var origEmail = r.email;
   var origName = r.name;
@@ -276,7 +276,7 @@ function makeEditable(td, r, field) {
     fetch(PROXY + '?action=yob26_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        orig_email: origEmail, orig_name: origName, orig_session: r.session,
+        orig_idx: idx, orig_email: origEmail, orig_name: origName, orig_session: r.session,
         name: r.name, email: r.email, tax: r.tax,
         session: r.session, notes: r.notes
       })
@@ -294,7 +294,7 @@ function makeEditable(td, r, field) {
 
 var SESSION_LABELS = {inperson:'La Mayavin, lângă București', live:'Online live', replay:'Replay'};
 
-function transferMenu(td, r) {
+function transferMenu(td, r, idx) {
   if (td.querySelector('select')) return;
   var oldSession = r.session;
   var el = document.createElement('select');
@@ -317,7 +317,7 @@ function transferMenu(td, r) {
     fetch(PROXY + '?action=yob26_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        orig_email: r.email, orig_name: r.name, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
+        orig_idx: idx, orig_email: r.email, orig_name: r.name, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
         session: r.session, notes: r.notes
       })
     }).then(function(res){ return res.json(); }).then(function(j){
@@ -337,8 +337,9 @@ function transferMenuBtn(btn) {
   var td = btn.closest('td[data-field]');
   var tr = td.closest('tr[data-idx]');
   if (!tr) return;
-  var r = data[parseInt(tr.getAttribute('data-idx'))];
-  if (r) transferMenu(td, r);
+  var idx = parseInt(tr.getAttribute('data-idx'));
+  var r = data[idx];
+  if (r) transferMenu(td, r, idx);
 }
 
 document.getElementById('tbody').addEventListener('click', function(e) {
@@ -346,10 +347,11 @@ document.getElementById('tbody').addEventListener('click', function(e) {
   if (!td) return;
   var tr = td.closest('tr[data-idx]');
   if (!tr) return;
-  var r = data[parseInt(tr.getAttribute('data-idx'))];
+  var idx = parseInt(tr.getAttribute('data-idx'));
+  var r = data[idx];
   if (!r) return;
   var field = td.getAttribute('data-field');
-  makeEditable(td, r, field);
+  makeEditable(td, r, field, idx);
 });
 
 
@@ -361,7 +363,7 @@ async function deleteRow(idx, e) {
   try {
     var res = await fetch(PROXY+'?action=yob26_delete', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({email: r.email, name: r.name, session: r.session})
+      body: JSON.stringify({idx: idx, email: r.email, name: r.name, session: r.session})
     });
     var j = await res.json();
     if (j.error) { sy('Error: '+j.error); return; }

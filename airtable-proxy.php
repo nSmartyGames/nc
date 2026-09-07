@@ -1517,6 +1517,7 @@ switch ($action) {
         break;
 
     case 'yob26_edit':
+        $oidx = array_key_exists('orig_idx', $body) ? (int)$body['orig_idx'] : -1;
         $oe  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_email'] ?? '')));
         $on  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_name'] ?? '')));
         $ose = strtolower(str_replace(["\n","\r"], '', trim($body['orig_session'] ?? '')));
@@ -1525,20 +1526,29 @@ switch ($action) {
         $nt  = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
         $nse = str_replace(["\n","\r"], '', trim($body['session'] ?? ''));
         $nno = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
-        if (!$oe && !$on) { echo json_encode(['error' => 'orig_email or orig_name required']); break; }
+        if ($oidx < 0 && !$oe && !$on) { echo json_encode(['error' => 'orig_idx, orig_email or orig_name required']); break; }
         $ef = __DIR__ . '/yob26.csv';
         if (!file_exists($ef)) { echo json_encode(['error' => 'File not found']); break; }
         $er = []; $ei = -1;
         if (($efh = fopen($ef,'r')) !== false) { fgetcsv($efh); while (($row=fgetcsv($efh))!==false) $er[]=$row; fclose($efh); }
-        for ($i=0;$i<count($er);$i++) {
-            if ($oe) {
-                if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
-            } else {
-                if (strtolower(trim($er[$i][1]??'')) !== '') continue;
-                if (strtolower(trim($er[$i][0]??'')) !== $on) continue;
+        // Prefer the row-index match (unambiguous even with duplicate email/session pairs);
+        // fall back to email/name+session lookup for older clients that don't send orig_idx.
+        if ($oidx >= 0 && $oidx < count($er)
+            && (!$oe || strtolower(trim($er[$oidx][1]??'')) === $oe)
+            && (!$on || strtolower(trim($er[$oidx][0]??'')) === $on)) {
+            $ei = $oidx;
+        }
+        if ($ei < 0) {
+            for ($i=0;$i<count($er);$i++) {
+                if ($oe) {
+                    if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
+                } else {
+                    if (strtolower(trim($er[$i][1]??'')) !== '') continue;
+                    if (strtolower(trim($er[$i][0]??'')) !== $on) continue;
+                }
+                if ($ose !== '' && strtolower(trim($er[$i][3]??'')) !== $ose) continue;
+                $ei = $i; break;
             }
-            if ($ose !== '' && strtolower(trim($er[$i][3]??'')) !== $ose) continue;
-            $ei = $i; break;
         }
         if ($ei < 0) { echo json_encode(['error' => 'Record not found']); break; }
         if ($nm  !== '') $er[$ei][0] = $nm;
@@ -1567,28 +1577,38 @@ switch ($action) {
         break;
 
     case 'yob26_delete':
+        $didx = array_key_exists('idx', $body) ? (int)$body['idx'] : -1;
         $de = strtolower(str_replace(["\n","\r"], '', trim($body['email'] ?? '')));
         $dn = strtolower(str_replace(["\n","\r"], '', trim($body['name'] ?? '')));
         $dse = strtolower(str_replace(["\n","\r"], '', trim($body['session'] ?? '')));
-        if (!$de && !$dn) { echo json_encode(['error' => 'email or name required']); break; }
+        if ($didx < 0 && !$de && !$dn) { echo json_encode(['error' => 'idx, email or name required']); break; }
         $df = __DIR__ . '/yob26.csv';
         if (!file_exists($df)) { echo json_encode(['error' => 'File not found']); break; }
-        $drows = []; $dfound = false; $ddeleted = false;
+        $drows = [];
         if (($dfh = fopen($df,'r')) !== false) { fgetcsv($dfh); while (($dr=fgetcsv($dfh))!==false) $drows[]=$dr; fclose($dfh); }
-        $drows = array_filter($drows, function($r) use ($de, $dn, $dse, &$dfound, &$ddeleted) {
-            if ($de) {
-                if (strtolower(trim($r[1]??'')) !== $de) return true;
-            } else {
-                if (strtolower(trim($r[1]??'')) !== '') return true;
-                if (strtolower(trim($r[0]??'')) !== $dn) return true;
-            }
-            $dfound = true;
-            if ($dse !== '' && strtolower(trim($r[3]??'')) !== $dse) return true;
-            $ddeleted = true;
-            return false;
-        });
-        if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
-        if (!$ddeleted) { echo json_encode(['error' => 'No row matching that key + session']); break; }
+        // Prefer the row-index match (unambiguous even with duplicate email/session pairs);
+        // fall back to email/name+session lookup for older clients that don't send idx.
+        if ($didx >= 0 && $didx < count($drows)
+            && (!$de || strtolower(trim($drows[$didx][1]??'')) === $de)
+            && (!$dn || strtolower(trim($drows[$didx][0]??'')) === $dn)) {
+            unset($drows[$didx]);
+        } else {
+            $dfound = false; $ddeleted = false;
+            $drows = array_filter($drows, function($r) use ($de, $dn, $dse, &$dfound, &$ddeleted) {
+                if ($de) {
+                    if (strtolower(trim($r[1]??'')) !== $de) return true;
+                } else {
+                    if (strtolower(trim($r[1]??'')) !== '') return true;
+                    if (strtolower(trim($r[0]??'')) !== $dn) return true;
+                }
+                $dfound = true;
+                if ($dse !== '' && strtolower(trim($r[3]??'')) !== $dse) return true;
+                $ddeleted = true;
+                return false;
+            });
+            if (!$dfound) { echo json_encode(['error' => 'Record not found']); break; }
+            if (!$ddeleted) { echo json_encode(['error' => 'No row matching that key + session']); break; }
+        }
         $dfh = fopen($df,'w'); fputcsv($dfh,['name','email','tax','session','notes']);
         foreach($drows as $dr) fputcsv($dfh,$dr); fclose($dfh);
         echo json_encode(['ok' => true]);
