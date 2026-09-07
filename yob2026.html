@@ -244,6 +244,7 @@ var TAX_OPTS = ['eeb','eb','regular','G','G-Evi','pending',''];
 function makeEditable(td, r, field) {
   if (td.querySelector('input,select')) return;
   var origEmail = r.email;
+  var origName = r.name;
   var oldVal = r[field];
   var el;
   if (field === 'tax') {
@@ -275,7 +276,7 @@ function makeEditable(td, r, field) {
     fetch(PROXY + '?action=yob26_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        orig_email: origEmail, orig_session: r.session,
+        orig_email: origEmail, orig_name: origName, orig_session: r.session,
         name: r.name, email: r.email, tax: r.tax,
         session: r.session, notes: r.notes
       })
@@ -316,7 +317,7 @@ function transferMenu(td, r) {
     fetch(PROXY + '?action=yob26_edit', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        orig_email: r.email, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
+        orig_email: r.email, orig_name: r.name, orig_session: oldSession, name: r.name, email: r.email, tax: r.tax,
         session: r.session, notes: r.notes
       })
     }).then(function(res){ return res.json(); }).then(function(j){

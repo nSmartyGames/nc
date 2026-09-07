@@ -1518,19 +1518,25 @@ switch ($action) {
 
     case 'yob26_edit':
         $oe  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_email'] ?? '')));
+        $on  = strtolower(str_replace(["\n","\r"], '', trim($body['orig_name'] ?? '')));
         $ose = strtolower(str_replace(["\n","\r"], '', trim($body['orig_session'] ?? '')));
         $nm  = str_replace(["\n","\r"], '', trim($body['name']    ?? ''));
         $ne  = strtolower(str_replace(["\n","\r"], '', trim($body['email']  ?? '')));
         $nt  = str_replace(["\n","\r"], '', trim($body['tax']     ?? ''));
         $nse = str_replace(["\n","\r"], '', trim($body['session'] ?? ''));
         $nno = str_replace(["\n","\r"], '', trim($body['notes']   ?? ''));
-        if (!$oe) { echo json_encode(['error' => 'orig_email required']); break; }
+        if (!$oe && !$on) { echo json_encode(['error' => 'orig_email or orig_name required']); break; }
         $ef = __DIR__ . '/yob26.csv';
         if (!file_exists($ef)) { echo json_encode(['error' => 'File not found']); break; }
         $er = []; $ei = -1;
         if (($efh = fopen($ef,'r')) !== false) { fgetcsv($efh); while (($row=fgetcsv($efh))!==false) $er[]=$row; fclose($efh); }
         for ($i=0;$i<count($er);$i++) {
-            if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
+            if ($oe) {
+                if (strtolower(trim($er[$i][1]??'')) !== $oe) continue;
+            } else {
+                if (strtolower(trim($er[$i][1]??'')) !== '') continue;
+                if (strtolower(trim($er[$i][0]??'')) !== $on) continue;
+            }
             if ($ose !== '' && strtolower(trim($er[$i][3]??'')) !== $ose) continue;
             $ei = $i; break;
         }
