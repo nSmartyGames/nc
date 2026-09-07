@@ -58,7 +58,7 @@ select option{background:#0d1e30}
 <div id="sy"></div>
 
 <div class="tab-bar">
-  <button class="tab on" id="tabI" onclick="setTab('inperson')">In-person <span id="cntI"></span></button>
+  <button class="tab on" id="tabI" onclick="setTab('inperson')">La Mayavin, lângă București <span id="cntI"></span></button>
   <button class="tab" id="tabL" onclick="setTab('live')">Online live <span id="cntL"></span></button>
   <button class="tab" id="tabR" onclick="setTab('replay')">Replay <span id="cntR"></span></button>
   <span class="stat-line" id="statLine"></span>
@@ -79,7 +79,7 @@ select option{background:#0d1e30}
       <option value="">— unpaid</option>
     </select>
     <select id="aS">
-      <option value="inperson">in-person</option>
+      <option value="inperson">la Mayavin, lângă București</option>
       <option value="live">online live</option>
       <option value="replay">replay</option>
     </select>
@@ -291,7 +291,7 @@ function makeEditable(td, r, field) {
   });
 }
 
-var SESSION_LABELS = {inperson:'In-person', live:'Online live', replay:'Replay'};
+var SESSION_LABELS = {inperson:'La Mayavin, lângă București', live:'Online live', replay:'Replay'};
 
 function transferMenu(td, r) {
   if (td.querySelector('select')) return;
