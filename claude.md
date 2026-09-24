@@ -31,6 +31,15 @@ bash update.sh student.html
 Always deploy `yoga.html` after any modification to it.
 Uploads via FTP (port 21, curl) to `public_html/app/` on nicolaecatrina.com and auto-refreshes matching Chrome tabs (Mac only). SSH port 65222 is blocked — use FTP only.
 
+## Mobile control from iOS (iSH) — `ish.sh`
+POSIX-sh script (runs in iSH/Alpine busybox; no Node needed). Secrets in `.ish.env` (gitignored, chmod 600).
+- First run: `apk add git curl && git clone https://github.com/nSmartyGames/nc && cd nc && sh ish.sh setup` (creates `.ish.env`; fill it, run `setup` again)
+- Git: `status`, `log`, `diff`, `pull`, `branch [name]`, `save "msg" [files]` (add+commit+push, 4× retry), `push`, `undo`
+- `save` refuses to stage `.deploy.prod.env`, `.ish.env`, `id_rsa*`, `sftp.duck`, `*.mobileconfig`
+- GitHub auth: fine-grained PAT in `.ish.env`; the credential helper reads it at runtime — token never written to `.git/config`
+- Deploy: `ftp <file>` (wraps update.sh — needs `.deploy.prod.env`), `vercel [prod]` (REST API: `/v2/files` + `/v13/deployments`, needs `VERCEL_TOKEN`), `hook` (Deploy Hook URL = Git integration), `vstatus`, `ship "msg" [prod]`
+- Vercel deploys static files only (html/css/js/images). PHP proxy can't run there, and CSV/JSON/xlsx/backups (student data) are always excluded. Override with `VERCEL_FILES`.
+
 ## Server Path
 Files live at: `nicolaecatrina.com/public_html/app/`
 - Admin page URL: `https://nicolaecatrina.com/app/yoga.html`
