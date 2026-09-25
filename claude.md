@@ -12,6 +12,7 @@ A web-based subscriber management system for yoga and related courses, hosted on
 All files live in the project root:
 - `yoga.html` — Admin subscriber table
 - `student.html` — Student portal with login
+- `iertare.html` — Public guest page "Practica ezoterică a iertării": 5 "Partea #" links (RO only). Auto-discovers files from `/wp-content/uploads/Practica_esoterica_a_iertarii/` listing (RO-marked files, else all non-EN, sorted by number); if the server disables directory listing, fill the `FILES` array in the page. URL: `https://nicolaecatrina.com/app/iertare.html`
 - `airtable-proxy.php` — PHP proxy to Airtable
 - `update.sh` — FTP deploy script (port 21, curl): `bash update.sh <filename>`
 - `watch-deploy.sh` — Auto-deploy watcher (monitors yoga.html, student.html, airtable-proxy.php)

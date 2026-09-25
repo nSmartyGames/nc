@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Practica ezoterică a iertării</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a1a;color:#d4a017;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 16px}
+.box{background:#242424;border:1px solid #3a3a3a;border-radius:12px;padding:28px 24px;width:100%;max-width:560px;margin-top:40px;text-align:center}
+.logo{font-size:13px;color:#888;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+h1{font-size:22px;font-weight:700;color:#f0c030;margin-bottom:6px;line-height:1.3}
+.sub{font-size:13px;color:#888;margin-bottom:22px}
+.parts{display:flex;flex-direction:column;gap:10px}
+.part{display:flex;align-items:center;gap:12px;width:100%;background:#1a1a1a;color:#f0c030;border:1px solid #3a3a3a;border-radius:8px;padding:12px 16px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit;text-align:left}
+.part:hover,.part.on{border-color:#d4a017;background:#3a2e00}
+.part .n{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:1px solid #d4a017;font-size:13px;flex-shrink:0}
+.part .t{flex:1}
+.part .k{font-size:11px;color:#888;font-weight:500;text-transform:uppercase}
+.part.missing{opacity:.45;cursor:default}
+.player{margin-top:18px;display:none}
+.player.show{display:block}
+.player video,.player audio{width:100%;border-radius:8px;background:#000;outline:none}
+.player .dl{display:inline-block;margin-top:8px;font-size:12px;color:#5aa0d0}
+.msg{font-size:12px;color:#888;margin-top:16px;min-height:16px}
+.foot{font-size:11px;color:#555;margin-top:24px}
+.foot a{color:#888}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">Nicolae Catrina</div>
+  <h1>Practica ezoterică a iertării</h1>
+  <div class="sub">Pagină pentru invitați · 5 părți</div>
+  <div class="parts" id="parts"></div>
+  <div class="player" id="player"></div>
+  <div class="msg" id="msg"></div>
+  <div class="foot"><a href="https://nicolaecatrina.com/ro/">nicolaecatrina.com</a></div>
+</div>
+<script>
+// Folder with the recordings (same origin, so the page can read the Apache index when it is enabled).
+const DIR = '/wp-content/uploads/Practica_esoterica_a_iertarii/';
+const PARTS = 5;
+// Optional explicit file names (Romanian version), in order. When filled, auto-discovery is skipped.
+const FILES = [];
+
+const MEDIA = /\.(mp4|m4v|webm|mov|mp3|m4a|wav|ogg|aac|pdf)$/i;
+const RO = /(^|[^a-z])(ro|rom|romana|romanian)([^a-z]|$)/i;
+const EN = /(^|[^a-z])(en|eng|english)([^a-z]|$)/i;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = s => { const m = decodeURIComponent(s).match(/(\d+)/); return m ? +m[1] : 999; };
+
+async function discover() {
+  const r = await fetch(DIR, {cache: 'no-store'});
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+  const all = [...doc.querySelectorAll('a[href]')]
+    .map(a => a.getAttribute('href'))
+    .filter(h => h && !h.includes('/') && !h.startsWith('?') && MEDIA.test(h));
+  const names = [...new Set(all)];
+  const decoded = h => decodeURIComponent(h).replace(/\.[^.]+$/, '');
+  // Romanian only: files marked RO; if none are marked, everything not marked EN.
+  let ro = names.filter(h => RO.test(decoded(h)));
+  if (!ro.length) ro = names.filter(h => !EN.test(decoded(h)));
+  return ro.sort((a, b) => num(a) - num(b) || a.localeCompare(b)).slice(0, PARTS);
+}
+
+function kind(f) {
+  const ext = f.split('.').pop().toLowerCase();
+  if (['mp4','m4v','webm','mov'].includes(ext)) return 'video';
+  if (['mp3','m4a','wav','ogg','aac'].includes(ext)) return 'audio';
+  return 'pdf';
+}
+
+function render(files) {
+  const box = document.getElementById('parts');
+  box.innerHTML = '';
+  for (let i = 0; i < PARTS; i++) {
+    const f = files[i];
+    const label = `Partea ${i + 1}`;
+    if (!f) {
+      box.insertAdjacentHTML('beforeend', `<div class="part missing"><span class="n">${i + 1}</span><span class="t">${label}</span><span class="k">în curând</span></div>`);
+      continue;
+    }
+    const url = DIR + f;
+    const k = kind(f);
+    if (k === 'pdf') {
+      box.insertAdjacentHTML('beforeend', `<a class="part" href="${esc(url)}" target="_blank" rel="noopener"><span class="n">${i + 1}</span><span class="t">${label}</span><span class="k">pdf</span></a>`);
+    } else {
+      const b = document.createElement('button');
+      b.className = 'part';
+      b.innerHTML = `<span class="n">${i + 1}</span><span class="t">${label}</span><span class="k">${k === 'video' ? 'video' : 'audio'}</span>`;
+      b.onclick = () => play(b, url, k, label);
+      box.appendChild(b);
+    }
+  }
+}
+
+function play(btn, url, k, label) {
+  document.querySelectorAll('.part.on').forEach(x => x.classList.remove('on'));
+  btn.classList.add('on');
+  const p = document.getElementById('player');
+  p.innerHTML = `<${k} src="${esc(url)}" controls autoplay playsinline preload="metadata" controlsList="nodownload"></${k}>`
+    + `<div><a class="dl" href="${esc(url)}" target="_blank" rel="noopener">Deschide ${esc(label)} într-o filă nouă</a></div>`;
+  p.classList.add('show');
+  p.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+(async () => {
+  const msg = document.getElementById('msg');
+  if (FILES.length) return render(FILES);
+  try {
+    const files = await discover();
+    render(files);
+    if (!files.length) msg.textContent = 'Înregistrările vor fi disponibile în curând.';
+  } catch (e) {
+    render([]);
+    msg.textContent = 'Înregistrările nu au putut fi încărcate. Vă rugăm reîncercați mai târziu.';
+  }
+})();
+</script>
+</body>
+</html>
