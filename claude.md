@@ -21,6 +21,8 @@ All files live in the project root:
 - `_disabled-proxy.php` — Returns 503 for all requests; deployed as airtable-proxy.php by disable.sh
 - `.deploy.prod.env` — SSH credentials (never commit)
 - `NicolaeCatrina.code-workspace` — VS Code workspace file
+- `llm-switch.sh` — launch Claude Code on Claude or OpenRouter free models (see "AI Backend" below)
+- `.openrouter.env` — OpenRouter key (never commit)
 
 ## Deploy
 ```bash
@@ -153,6 +155,20 @@ auto-answer cases skip the draft step.
 - AT_TOKEN is hardcoded only in airtable-proxy.php on the server side
 - Group filter uses `subscriptions[courseId].G` field (string, e.g. "6" for G6)
 - `activeCourse` default must match a real course ID (e.g. "YTT-M1"), not "YM1"
+
+## AI Backend: Claude vs OpenRouter free models (llm-switch.sh)
+- `bash llm-switch.sh free [args]` — switches to branch **`openrouter-branch`** (creates it from master if missing; refuses if uncommitted changes), points Claude Code at OpenRouter, launches `claude`
+- `bash llm-switch.sh claude [args]` — clears OpenRouter vars, launches normal Claude (stays on current branch)
+- `bash llm-switch.sh status` — current branch + backend
+- Key + model in `.openrouter.env` (gitignored, never commit): `OPENROUTER_API_KEY=sk-or-...`, optional `OPENROUTER_MODEL=<model>:free`
+- Shell aliases (in `~/.zshrc`, replace `<NC_PATH>` with the local repo path): `alias claude-free='bash <NC_PATH>/llm-switch.sh free'` and `alias claude-paid='bash <NC_PATH>/llm-switch.sh claude'`
+- A running session can NOT change its own model — switching always means relaunching via the script. Cloud sessions (claude.ai/code) always use Claude; the script is for the local CLI only.
+
+### Rule: session starts with "claude free"
+1. Run `git rev-parse --abbrev-ref HEAD`; if not `openrouter-branch`, run `git checkout openrouter-branch` (commit/stash first if dirty — ask the user).
+2. Check `echo $ANTHROPIC_BASE_URL`. If it is not `https://openrouter.ai/api`, this session is still on Claude: tell the user to exit and relaunch with `claude-free` (or `bash llm-switch.sh free`).
+3. All free-model work is committed/pushed on `openrouter-branch` only — never on master or other feature branches.
+4. Free models are weak at tool use: do NOT run `daily-orders`, `mails`, payment/Airtable writes, email sending, or FTP deploys in free mode — tell the user to switch back with `claude-paid`. Free mode is for drafts, page text, and low-risk HTML/CSS edits.
 
 ## Setup on a New Machine
 1. Copy all project files to a local folder
