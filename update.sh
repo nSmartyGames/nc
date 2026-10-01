@@ -12,6 +12,7 @@ ENV="$DIR/.deploy.prod.env"
 [[ ! -f "$DIR/$FILE" ]] && { echo "File not found: $DIR/$FILE"; exit 1; }
 [[ ! -f "$ENV" ]] && { echo "Missing $ENV"; exit 1; }
 
+# shellcheck source=/dev/null
 source "$ENV"
 
 REMOTE="$APP_PATH/$FILE"

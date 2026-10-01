@@ -6,6 +6,7 @@ set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV="$DIR/.deploy.prod.env"
 [[ ! -f "$ENV" ]] && { echo "Missing $ENV"; exit 1; }
+# shellcheck source=/dev/null
 source "$ENV"
 
 FTP_PASS_ENC="${FTP_PASS//@/%40}"
