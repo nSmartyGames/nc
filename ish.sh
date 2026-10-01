@@ -21,6 +21,7 @@ set -eu
 DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV="$DIR/.ish.env"
 API="https://api.vercel.com"
+# shellcheck source=/dev/null
 [ -f "$ENV" ] && . "$ENV"
 
 say()  { printf '\033[33m▸\033[0m %s\n' "$*"; }
@@ -90,7 +91,7 @@ cmd_save() {
   if [ $# -gt 0 ]; then g add -- "$@"; else g add -A; fi
   bad=$(g diff --cached --name-only | grep -E "$SECRET_RE" || true)
   if [ -n "$bad" ]; then
-    g reset -q -- $bad
+    echo "$bad" | while IFS= read -r f; do g reset -q -- "$f"; done
     die "refused to commit secrets: $bad"
   fi
   g diff --cached --quiet && { say "Nothing to commit."; return; }
@@ -116,7 +117,7 @@ cmd_ftp() {
 }
 
 # ---------------------------------------------------------------- Vercel
-vq() { [ -n "${VERCEL_TEAM_ID:-}" ] && echo "?teamId=$VERCEL_TEAM_ID" || true; }
+vq() { if [ -n "${VERCEL_TEAM_ID:-}" ]; then echo "?teamId=$VERCEL_TEAM_ID"; fi; }
 vauth() { [ -n "${VERCEL_TOKEN:-}" ] || die "VERCEL_TOKEN not set in .ish.env"; need jq; }
 
 vercel_files() {
@@ -163,7 +164,7 @@ cmd_vercel() {
 # hook — trigger the Git-integration build via a Deploy Hook URL
 cmd_hook() {
   [ -n "${VERCEL_DEPLOY_HOOK:-}" ] || die "VERCEL_DEPLOY_HOOK not set in .ish.env"
-  curl -s -X POST "$VERCEL_DEPLOY_HOOK" | { command -v jq >/dev/null && jq . || cat; }
+  if command -v jq >/dev/null 2>&1; then curl -s -X POST "$VERCEL_DEPLOY_HOOK" | jq .; else curl -s -X POST "$VERCEL_DEPLOY_HOOK"; fi
 }
 
 # vstatus [n] — latest deployments of the project
